@@ -1,4 +1,3 @@
-console.log("login.js geladen");
 const EMAIL_MUSTER = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; //KI-Log Nr. 6
 
 $("#logon").click(function() {
