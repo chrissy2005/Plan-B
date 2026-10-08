@@ -4,8 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registrierung</title>
+    <link rel="stylesheet" href="login-register.css">
 </head>
+
 <body>
+    <main class="register-box">
+    <h1>Konto erstellen</h1>
+    <p id="error-message" class="error" hidden></p>
+
+    <p>Erstelle dein Konto für alle deine Projekte</p> <br><br>
+
+    Vorname: <input type="text" id="first-name-input"/><br><br>
+    Nachname: <input type="text" id="last-name-input"/><br><br>
+    E-Mail: <input type="email" id="email-input"/><br><br>
+    Passwort: <input type="password" id="password-input"/>
+
+    <p class= "hinweis">Mindestens 8 Zeichen </p><br><br>
     
+    <button type="button" id="register">Registrieren</button><br><br>
+    Schon registriert? <a href="login.html">Anmelden</a>
+
+    </main>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="register.js"></script>
 </body>
 </html>
