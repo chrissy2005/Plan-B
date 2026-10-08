@@ -1,4 +1,4 @@
-/*KI-Log Nr. 14*/
+/*KI-Log Nr. 13*/
 *, *::before, *::after {
     box-sizing: border-box;
 }
@@ -36,7 +36,7 @@ button {
     width: 100%;
     max-width: 360px;
 } 
-/*KI-Log Nr. 12*/
+/*KI-Log Nr. 11*/
 #error-message {
     color: red;
     margin-top: 8px;
@@ -46,5 +46,5 @@ button {
 .hinweis {
     font-size: 12px;
     color:#993556;
-    margin: 4px 0 0; /* KI-Log Nr. 17 */
+    margin: 4px 0 0; /* KI-Log Nr. 16 */
 }

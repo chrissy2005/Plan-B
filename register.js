@@ -30,12 +30,12 @@ $.ajax({
           dataType: 'json',
           contentType: 'application/json',
           data: JSON.stringify(user),
-          //KI-Log Nr. 18
+          //KI-Log Nr. 17
           success: function (data) {
                 console.log("User erfolgreich registriert:", data);
                 anmelden({ email: email, password: password });
         },
-          //KI-Log Nr. 15
+          //KI-Log Nr. 14
           error: function (xhr) {
             if (xhr.status === 400 && xhr.responseJSON && xhr.responseJSON.message === "user already exists") {
                 zeigeFehler("Diese E-Mail ist bereits registriert. Melden Sie sich an oder verwenden Sie eine andere Adresse.");
@@ -50,7 +50,7 @@ $.ajax({
       });
 })
 
-//KI-Log Nr. 16
+//KI-Log Nr. 15
 function anmelden(user) {
     $.ajax({
         url: 'http://localhost:8080/auth',

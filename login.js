@@ -1,7 +1,7 @@
 const EMAIL_MUSTER = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; //KI-Log Nr. 6
 
 $("#logon").click(function() {
-    const email = $("#email-input").val().trim(); //KI-Log Nr. 10
+    const email = $("#email-input").val().trim(); //KI-Log Nr. 9
     const password = $("#password-input").val();
     const user = { email: email, password: password };
 
@@ -28,11 +28,11 @@ $("#logon").click(function() {
               console.log(data); //später rausnehmen
               sessionStorage.setItem("plan-b-token",data.token);
               sessionStorage.setItem("plan-b-user-id", data.userId);
-              window.location.href = "index.html"; //KI-Log Nr. 9
+              window.location.href = "index.html"; //KI-Log Nr. 8
           },
           data: JSON.stringify(user),
           processData: false,
-          //KI-Log Nr. 11
+          //KI-Log Nr. 10
           error: function (xhr) {
               if (xhr.status === 400 || xhr.status === 401) {
                   zeigeFehler("E-Mail oder Passwort ist falsch. Prüfen Sie Ihre Eingaben oder registrieren Sie sich.");
@@ -49,7 +49,7 @@ $("#logon").click(function() {
 
 
 function versteckeFehler() { 
-    $("#error-message").text("").prop("hidden", true); //KI-Log Nr. 8
+    $("#error-message").text("").prop("hidden", true); //KI-Log Nr. 7
 }
 
 function zeigeFehler(message) {
