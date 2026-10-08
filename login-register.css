@@ -28,7 +28,7 @@ button {
 } 
 
 /*KI-Log Nr. 4*/
-.login-box {
+.login-box, .register-box {
     background: white;
     border: 1px solid #e5dde1;
     border-radius: 12px;
@@ -41,4 +41,10 @@ button {
     color: red;
     margin-top: 8px;
     font-size: 14px; 
+}
+
+.hinweis {
+    font-size: 12px;
+    color:#993556;
+    margin: 4px 0 0; /* KI-Log Nr. 17 */
 }
