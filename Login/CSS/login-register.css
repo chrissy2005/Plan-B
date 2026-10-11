@@ -80,3 +80,13 @@ button {
     height: 16px;
     display: block;
 }
+
+/*KI-Log Nr. 20*/
+.login-box label, .register-box label {
+    display: inline-block;
+    width: 90px;
+}
+
+.login-box input, .register-box input {
+    width: 200px;
+}
