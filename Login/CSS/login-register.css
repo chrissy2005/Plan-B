@@ -48,3 +48,35 @@ button {
     color:#993556;
     margin: 4px 0 0; /* KI-Log Nr. 16 */
 }
+
+
+/*KI-Log Nr. 18*/
+.passwort-feld {
+    position: relative;
+    display: inline-block;
+}
+
+/*KI-Log Nr. 18*/
+.passwort-feld input {
+    padding-right: 32px;
+}
+
+/*KI-Log Nr. 18*/
+.toggle-password {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    margin: 0;
+    padding: 2px 4px;
+    background: none;
+    color: #993556;
+    font-size: 16px;
+}
+
+/*KI-Log Nr. 18*/
+.toggle-password img {
+    width: 16px;
+    height: 16px;
+    display: block;
+}

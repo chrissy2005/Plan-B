@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Anmeldung</title>
-    <link rel="stylesheet" href="login-register.css">
+    <link rel="stylesheet" href="../CSS/login-register.css">
 </head>
 
 <body>
@@ -14,14 +14,20 @@
 
     <p>Melde dich an, um deine Projekte zu sehen </p> <br><br>
         E-Mail: <input type="email" id="email-input"/><br><br>
-        Passwort: <input type="password" id="password-input"/><br><br>
+        <div class="passwort-feld"> <!--KI Log Nr. 18-->
+            <input type="password" id="password-input">
+            <button type="button" class="toggle-password" aria-label="Passwort anzeigen">
+                <img src="../../icons/eye.svg" alt="">
+            </button>
+        </div>
     
         <button type="button" id="logon">Anmelden</button><br><br>
         Noch kein Konto? <a href="register.html">Registrieren</a>
     
     </main>
    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script> <!--KI-Log Nr. 1-->
-   <script src="login.js"></script>
+   <script src="../JS/passwort-toggle.js"></script> <!--KI-Log Nr. 18-->
+   <script src="../JS/login.js"></script>
 </body>
 </html>
 <!--KI-Log Nr. 12: Gesamten Code prüfen nach Fehlern-->
