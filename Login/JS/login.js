@@ -26,8 +26,8 @@ $("#logon").click(function() {
           contentType: 'application/json',
           success: function (data) {
               console.log(data); //später rausnehmen
-              sessionStorage.setItem("plan-b-token",data.token);
-              sessionStorage.setItem("plan-b-user-id", data.userId);
+              sessionStorage.setItem("token",data.token);
+              sessionStorage.setItem("user-id", data.userId);
               window.location.href = "index.html"; //KI-Log Nr. 8
           },
           data: JSON.stringify(user),
