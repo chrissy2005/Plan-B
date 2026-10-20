@@ -291,13 +291,21 @@
       return list.map(normalizeProject);
     },
 
-    // BACKEND: POST /projects  Body { title, description } -> 201 { id }
+    // KI-Log Nr. 55: Das Backend validiert je nach Version "title" oder "name".
+    // Beide Felder enthalten denselben UI-Wert; Token/Header bleiben zentral.
+    // BACKEND: POST /projects  Body { title, name, description } -> 201 { id|projectId }
     // Ersteller wird im Backend automatisch PROJEKTLEITUNG.
     async createProject(data) {
       if (USE_MOCK) return mock.createProject(data);
-      const raw = await request('POST', '/projects', data);
+      const title = String(data.title ?? data.name ?? '').trim();
+      const description = String(data.description ?? '').trim();
+      const raw = await request('POST', '/projects', { title, name: title, description });
       const result = (raw && (raw.project || raw.data)) || raw || {};
-      return { ...result, id: String(result.id ?? result.projectId ?? raw.projectId ?? '') };
+      const id = result.id ?? result.projectId ?? raw.projectId ?? raw.id;
+      if (id === undefined || id === null || id === '') {
+        throw new ApiError(502, 'Das Projekt wurde erstellt, aber der Server hat keine Projekt-ID geliefert.', raw);
+      }
+      return { ...result, id: String(id) };
     },
 
     // BACKEND: GET /projects/{projectId}
