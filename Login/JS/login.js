@@ -1,5 +1,5 @@
 const EMAIL_MUSTER = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; //KI-Log Nr. 6
-const API_URL = "plan-b-api-6486e78ed17c.herokuapp.com"
+const API_URL = "https://plan-b-api-6486e78ed17c.herokuapp.com"
 
 $("#logon").click(function() {
     const email = $("#email-input").val().trim(); //KI-Log Nr. 9
@@ -21,7 +21,7 @@ $("#logon").click(function() {
 
 
     $.ajax({
-          url: 'http://${API_URL}/auth',
+          url: `${API_URL}/auth`,
           type: 'post',
           dataType: 'json',
           contentType: 'application/json',

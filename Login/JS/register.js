@@ -1,5 +1,5 @@
 const EMAIL_MUSTER = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; //KI-Log Nr. 6
-const API_URL = "plan-b-api-6486e78ed17c.herokuapp.com"
+const API_URL = "https://plan-b-api-6486e78ed17c.herokuapp.com"
 
 $("#register").click(function() {
     const firstName = $("#first-name-input").val().trim();
@@ -26,7 +26,7 @@ $("#register").click(function() {
     }
     versteckeFehler(); //KI-Log Nr. 7
 $.ajax({
-          url: 'http://${API_URL}/users',
+          url: `${API_URL}/users`,
           type: 'post',
           dataType: 'json',
           contentType: 'application/json',
@@ -54,7 +54,7 @@ $.ajax({
 //KI-Log Nr. 15
 function anmelden(user) {
     $.ajax({
-        url: 'http://${API_URL}/auth',
+        url: `${API_URL}/auth`,
         type: "post",
         dataType: "json",
         contentType: "application/json",
