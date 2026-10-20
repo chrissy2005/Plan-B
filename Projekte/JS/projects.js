@@ -16,11 +16,20 @@
   ui.initTopbar(api);
   loadProjects();
 
-  $('#newProjectButton').addEventListener('click', () => {
+  function openNewProjectModal() {
     form.reset();
     ui.clearFormError(form);
     ui.openModal('newProjectModal');
-  });
+  }
+
+  $('#newProjectButton').addEventListener('click', openNewProjectModal);
+
+  // KI-Log Nr. 50: Der frühere create-new-project.html-Einstieg verwendet
+  // dasselbe zentrale Formular und erzeugt keine zweite Projektanlage.
+  if (window.location.hash === '#new') {
+    openNewProjectModal();
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  }
 
   async function loadProjects() {
     try {
