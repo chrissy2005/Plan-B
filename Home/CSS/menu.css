@@ -1,0 +1,68 @@
+/* KI-Log Nr. 21*/
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  color: #351722;
+  background: #f6f4f5;
+}
+
+/* KI-Log Nr. 21*/
+nav {
+  display: flex;
+  flex-wrap: wrap;        
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 2px solid #993556;
+  background: #fff;
+}
+
+/* KI-Log Nr. 21*/
+nav a {
+  padding: 6px 12px;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  color: #222;
+  text-decoration: none;
+}
+
+ /* KI-Log Nr. 21*/
+nav a:hover {
+  background: #fbe4ef;
+}
+
+ /* KI-Log Nr. 21*/
+nav a.active {
+  border-color: #993556;
+  color: #993556;
+  font-weight: bold;
+}
+ 
+ /* KI-Log Nr. 21*/
+.logo {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #993556 !important;
+}
+ 
+ /* KI-Log Nr. 21*/
+#logout {
+  margin-left: auto;      
+  padding: 6px 12px;
+  color: #993556;
+  background: white;
+  border: 1px solid #993556;
+  border-radius: 6px;
+  cursor: pointer;
+}
+ 
+ /* KI-Log Nr. 21*/
+#logout:hover {
+  color: white;
+  background: #993556;
+}
+ 
+ /* KI-Log Nr. 21*/
+main {
+  padding: 16px;
+}
