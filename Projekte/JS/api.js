@@ -43,10 +43,12 @@
   let cachedUser = null; // KI-Log Nr. 41: currentUserId fuer Rollen-/Mitglieder-Mapping wiederverwenden.
 
   class ApiError extends Error {
-    constructor(status, message, data) {
+    constructor(status, message, data, method, path) {
       super(message);
       this.status = status;
       this.data = data || null;
+      this.method = method || '';
+      this.path = path || '';
     }
   }
 
@@ -114,11 +116,19 @@
       const knownMessages = {
         'title missing': 'Bitte einen Titel eingeben.',
         'project not found': 'Projekt nicht gefunden. Bitte lade die Projektübersicht neu.',
-        'invalid token': 'Deine Anmeldung ist abgelaufen. Bitte melde dich erneut an.'
+        'Project not found': 'Projekt nicht gefunden. Bitte lade die Projektübersicht neu.',
+        'invalid token': 'Deine Anmeldung ist abgelaufen. Bitte melde dich erneut an.',
+        'no permission': 'Dafür fehlt dir die Berechtigung.',
+        'User is no member of the project': 'Du bist kein Mitglied dieses Projekts.',
+        'authenticated user could not be found': 'Dein Benutzerkonto konnte nicht gefunden werden.',
+        'User not found': 'Dein Benutzerkonto konnte nicht gefunden werden.'
       };
-      const message = knownMessages[rawMessage] || rawMessage || DEFAULT_MESSAGES[response.status]
+      const baseMessage = knownMessages[rawMessage] || rawMessage || DEFAULT_MESSAGES[response.status]
         || 'Unerwarteter Fehler (' + response.status + ').';
-      throw new ApiError(response.status, message, data);
+      const message = response.status === 403
+        ? baseMessage + ' Anfrage: ' + method + ' ' + path + ' (HTTP 403).'
+        : baseMessage;
+      throw new ApiError(response.status, message, data, method, path);
     }
     return data;
   }

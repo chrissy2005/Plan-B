@@ -62,11 +62,25 @@
 
   async function loadData() {
     // BACKEND: Projekt, Mitglieder, Meetings und Long-ToDos sind getrennte Ressourcen.
-    const [project, tasks, members] = await Promise.all([
+    const results = await Promise.allSettled([
       api.getProject(projectId),
       api.getTasks(projectId),
       api.getMembers(projectId)
     ]);
+
+    // KI-Log Nr. 50: Fehler werden dem konkreten Request zugeordnet,
+    // damit ein fehlender Unter-Endpunkt nicht als Berechtigungsfehler erscheint.
+    const requestNames = ['Projekt', 'Meetings und Long-ToDos', 'Projektmitglieder'];
+    const failedIndex = results.findIndex(result => result.status === 'rejected');
+    if (failedIndex !== -1) {
+      const reason = results[failedIndex].reason;
+      const detail = reason && reason.message ? ': ' + reason.message : '';
+      throw new Error(requestNames[failedIndex] + ' konnten nicht geladen werden' + detail);
+    }
+
+    const project = results[0].value;
+    const tasks = results[1].value;
+    const members = results[2].value;
     project.members = members;
     state.project = project;
     state.tasks = tasks;
