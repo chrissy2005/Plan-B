@@ -139,7 +139,7 @@
   // KI-Log Nr. 41: Response-Mapper akzeptieren direkte Antworten und gängige Wrapper.
   function normalizeRole(value) {
     const role = String(value || '').toUpperCase();
-    if (['PL', 'PROJECT_LEAD', 'PROJECT_MANAGER', 'PROJEKTLEITER', 'PROJEKTLEITUNG'].includes(role)) return 'PROJEKTLEITUNG';
+    if (['PL', 'PROJECT_LEAD', 'PROJECT_LEADER', 'PROJECT_MANAGER', 'PROJEKTLEITER', 'PROJEKTLEITUNG'].includes(role)) return 'PROJEKTLEITUNG';
     if (['MEMBER', 'TEAM_MEMBER', 'TEAMMITGLIED'].includes(role)) return 'TEAMMITGLIED';
     return value || 'TEAMMITGLIED';
   }
@@ -205,6 +205,43 @@
         schedule: sub.schedule || null
       }))
     };
+  }
+
+  function normalizeMeeting(raw) {
+    const meeting = raw || {};
+    const participants = Array.isArray(meeting.participants) ? meeting.participants : [];
+    return normalizeTask({
+      ...meeting,
+      id: meeting.meetingId ?? meeting.id,
+      projectId: meeting.projectId,
+      type: 'MEETING',
+      start: meeting.startDateTime ?? meeting.start,
+      end: meeting.endDateTime ?? meeting.end,
+      participantIds: meeting.participantIds || participants.map(p => p.userId),
+      allParticipants: !!meeting.allParticipants,
+      subtasks: []
+    });
+  }
+
+  function normalizeLongTodo(raw) {
+    const todo = raw || {};
+    const assignedMembers = Array.isArray(todo.assignedMembers) ? todo.assignedMembers : [];
+    const subtasks = Array.isArray(todo.subtasks) ? todo.subtasks : [];
+    return normalizeTask({
+      ...todo,
+      id: todo.longToDoId ?? todo.id,
+      projectId: todo.projectId,
+      type: 'LANGES_TODO',
+      start: todo.startDateTime ?? todo.start,
+      end: todo.endDateTime ?? todo.end,
+      participantIds: todo.assignedMemberIds || assignedMembers.map(member => member.userId),
+      allParticipants: false,
+      subtasks: subtasks.map(subtask => ({
+        ...subtask,
+        id: subtask.subtaskId ?? subtask.id,
+        assigneeId: subtask.assigneeId ?? null
+      }))
+    });
   }
 
   /* ==================================================================
@@ -299,7 +336,7 @@
       if (USE_MOCK) return mock.createProject(data);
       const title = String(data.title ?? data.name ?? '').trim();
       const description = String(data.description ?? '').trim();
-      const raw = await request('POST', '/projects', { title, name: title, description });
+      const raw = await request('POST', '/projects', { name: title, description });
       const result = (raw && (raw.project || raw.data)) || raw || {};
       const id = result.id ?? result.projectId ?? raw.projectId ?? raw.id;
       if (id === undefined || id === null || id === '') {
@@ -309,12 +346,26 @@
     },
 
     // BACKEND: GET /projects/{projectId}
-    // -> { id, title, description, status, updatedAt, myRole,
-    //      members:[{ userId, name, email, role }] }
+    // -> { projectId, name, description, status, role, createdByUserFirstName, createdByUserLastName }
     async getProject(projectId) {
       if (USE_MOCK) return mock.getProject(projectId);
       const raw = await request('GET', '/projects/' + encodeURIComponent(projectId));
       return normalizeProject(raw);
+    },
+
+    // BACKEND: GET /projects/{projectId}/members -> [{ userId, firstName, lastName, role }]
+    async getMembers(projectId) {
+      if (USE_MOCK) return mock.getProject(projectId).then(project => project.members || []);
+      const raw = await request('GET', '/projects/' + encodeURIComponent(projectId) + '/members');
+      const data = raw && (raw.data || raw);
+      const members = Array.isArray(data) ? data : (data.members || data.items || []);
+      return members.map(member => ({
+        ...member,
+        userId: String(member.userId ?? member.id ?? ''),
+        name: member.name || [member.firstName, member.lastName].filter(Boolean).join(' ') || member.email || '',
+        email: member.email || '',
+        role: normalizeRole(member.role)
+      }));
     },
 
     // BACKEND: PATCH /projects/{projectId}  Body { title, description, status } -> 200 Projekt
@@ -369,16 +420,22 @@
 
     /* ---------- Tasks (Meeting / Langes To-Do) ---------- */
 
-    // BACKEND: GET /projects/{projectId}/tasks
-    // -> [{ id, projectId, type, title, description, start, end, priority,
-    //       allParticipants, participantIds:[], done, doneBy, doneAt,
-    //       subtasks:[{ id, title, description, assigneeId|null, done }] }]
+    // BACKEND: GET /projects/{projectId}/meetings and /projects/{projectId}/long-todos
+    // The UI still receives one normalized task list internally.
     async getTasks(projectId) {
       if (USE_MOCK) return mock.getTasks(projectId);
-      const raw = await request('GET', '/projects/' + encodeURIComponent(projectId) + '/tasks');
-      const data = raw && (raw.data || raw);
-      const list = Array.isArray(data) ? data : (data.tasks || data.items || []);
-      return list.map(normalizeTask);
+      const encodedId = encodeURIComponent(projectId);
+      const [meetingsRaw, todosRaw] = await Promise.all([
+        request('GET', '/projects/' + encodedId + '/meetings'),
+        request('GET', '/projects/' + encodedId + '/long-todos')
+      ]);
+      const unwrap = (raw, key) => {
+        const data = raw && (raw.data || raw);
+        return Array.isArray(data) ? data : (data[key] || data.items || []);
+      };
+      const meetings = unwrap(meetingsRaw, 'meetings').map(normalizeMeeting);
+      const todos = unwrap(todosRaw, 'longToDos').map(normalizeLongTodo);
+      return meetings.concat(todos);
     },
 
     // KI-Log Nr. 43: Meeting und langes To-do verwenden getrennte JSON-Payloads.

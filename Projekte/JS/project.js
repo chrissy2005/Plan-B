@@ -61,8 +61,13 @@
   }
 
   async function loadData() {
-    // BACKEND: GET /projects/{projectId}  und  GET /projects/{projectId}/tasks
-    const [project, tasks] = await Promise.all([api.getProject(projectId), api.getTasks(projectId)]);
+    // BACKEND: Projekt, Mitglieder, Meetings und Long-ToDos sind getrennte Ressourcen.
+    const [project, tasks, members] = await Promise.all([
+      api.getProject(projectId),
+      api.getTasks(projectId),
+      api.getMembers(projectId)
+    ]);
+    project.members = members;
     state.project = project;
     state.tasks = tasks;
     state.isLead = project.myRole === 'PROJEKTLEITUNG';
