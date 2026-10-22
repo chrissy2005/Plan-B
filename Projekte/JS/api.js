@@ -409,17 +409,17 @@
       return request('GET', '/projects/' + encodeURIComponent(projectId) + '/invitations?status=AUSSTEHEND');
     },
 
-    // KI-Log Nr. 43: Einladung mit eigenem JSON-Vertrag.
-    // BACKEND: POST https://plan-b-api-6486e78ed17c.herokuapp.com/projects/{projectId}/invitations
-    // JSON-Body { email, role } -> 201 Einladung; Token nur im Header.
-    // 409, wenn die Person schon Mitglied oder bereits eingeladen ist
+    // KI-Log Nr. 58: Das Backend verwaltet Einladungen aktuell über die
+    // Mitglieder-Schnittstelle und erwartet ProjectRole-Enumwerte.
+    // BACKEND: POST /projects/{projectId}/members
+    // JSON-Body { email, role } -> 200 Mitgliedschaft; Token nur im Header.
     inviteMember(projectId, data) {
       const payload = {
         email: String(data.email || '').trim().toLowerCase(),
-        role: data.role === 'PROJEKTLEITUNG' ? 'PL' : 'member'
+        role: data.role === 'PROJEKTLEITUNG' ? 'PROJECT_LEADER' : 'MEMBER'
       };
       if (USE_MOCK) return mock.inviteMember(projectId, data);
-      return request('POST', '/projects/' + encodeURIComponent(projectId) + '/invitations', payload);
+      return request('POST', '/projects/' + encodeURIComponent(projectId) + '/members', payload);
     },
 
     // BACKEND: DELETE /projects/{projectId}/invitations/{invitationId} -> 204 (Zurueckziehen)

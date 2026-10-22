@@ -573,12 +573,13 @@
     }
     await ui.withBusy($('#inviteSubmit'), async () => {
       try {
-        // KI-Log Nr. 46: Einladung sendet JSON { email, role }; Token liegt nur im Header.
-        // BACKEND: POST https://plan-b-api-6486e78ed17c.herokuapp.com/projects/{projectId}/invitations
+        // KI-Log Nr. 59: Einladung wird über die vorhandene Mitglieder-Schnittstelle gesendet.
+        // BACKEND: POST /projects/{projectId}/members; Token liegt nur im Header.
         await api.inviteMember(projectId, { email, role });
         ui.closeModal('inviteModal');
         ui.toast(`Einladung an ${email} gesendet.`);
-        await loadInvitations();
+        await loadData();
+        render();
       } catch (error) {
         ui.showFormError(form, error.message);
       }
