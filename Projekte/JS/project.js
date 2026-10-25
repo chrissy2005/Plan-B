@@ -24,7 +24,6 @@
     me: null,
     project: null,
     tasks: [],
-    invitations: [],
     expanded: new Set(),
     isLead: false,
     isActive: true,
@@ -444,18 +443,12 @@
 
   async function openMembers() {
     renderMemberItems();
-    $('#invitationItems').innerHTML = '<p class="empty">Einladungen werden geladen …</p>';
     ui.openModal('membersModal');
-    await loadInvitations();
-  }
-
-  async function loadInvitations() {
     try {
-      // BACKEND: GET /projects/{projectId}/invitations?status=AUSSTEHEND
-      state.invitations = await api.getInvitations(projectId);
-      renderInvitationItems();
+      state.project.members = await api.getMembers(projectId);
+      renderMemberItems();
     } catch (error) {
-      $('#invitationItems').innerHTML = `<p class="empty">${esc(error.message)}</p>`;
+      $('#memberItems').innerHTML = `<p class="empty">${esc(error.message)}</p>`;
     }
   }
 
@@ -469,21 +462,6 @@
         </div>
         <button type="button" class="icon-btn" data-action="edit-member" data-user="${esc(m.userId)}" aria-label="Rolle von ${esc(m.name)} ändern" title="Rolle ändern">${ui.ICON.pencil}</button>
         <button type="button" class="icon-btn" data-action="remove-member" data-user="${esc(m.userId)}" aria-label="${esc(m.name)} entfernen" title="Aus Projekt entfernen">${ui.ICON.trash}</button>
-      </div>`).join('');
-  }
-
-  function renderInvitationItems() {
-    if (!state.invitations.length) {
-      $('#invitationItems').innerHTML = '<p class="empty">Keine ausstehenden Einladungen.</p>';
-      return;
-    }
-    $('#invitationItems').innerHTML = state.invitations.map(inv => `
-      <div class="member-item pending">
-        <div class="info">
-          <strong>${esc(inv.email)}</strong>
-          <small>${esc(ui.ROLE[inv.role])} · eingeladen am ${esc(ui.fmtDayMonth(inv.sentAt))} · ausstehend</small>
-        </div>
-        <button type="button" class="btn btn-lg" data-action="withdraw" data-invitation="${esc(inv.id)}">Zurückziehen</button>
       </div>`).join('');
   }
 
@@ -538,29 +516,16 @@
     });
   }
 
-  async function withdrawInvitation(button) {
-    await ui.withBusy(button, async () => {
-      try {
-        // BACKEND: DELETE /projects/{projectId}/invitations/{invitationId}
-        await api.withdrawInvitation(projectId, button.dataset.invitation);
-        ui.toast('Einladung zurückgezogen.');
-        await loadInvitations();
-      } catch (error) {
-        ui.toast(error.message, true);
-      }
-    });
-  }
+  /* ================= Mitglied direkt hinzufügen ================= */
 
-  /* ================= Mitglied einladen (S. 8) ================= */
-
-  function openInvite() {
-    const form = $('#inviteForm');
+  function openAddMember() {
+    const form = $('#addMemberForm');
     form.reset();
     ui.clearFormError(form);
-    ui.openModal('inviteModal');
+    ui.openModal('addMemberModal');
   }
 
-  async function sendInvitation(event) {
+  async function submitMember(event) {
     event.preventDefault();
     const form = event.currentTarget;
     ui.clearFormError(form);
@@ -571,15 +536,15 @@
       form.elements.email.focus();
       return;
     }
-    await ui.withBusy($('#inviteSubmit'), async () => {
+    await ui.withBusy($('#addMemberSubmit'), async () => {
       try {
-        // KI-Log Nr. 59: Einladung wird über die vorhandene Mitglieder-Schnittstelle gesendet.
         // BACKEND: POST /projects/{projectId}/members; Token liegt nur im Header.
-        await api.inviteMember(projectId, { email, role });
-        ui.closeModal('inviteModal');
-        ui.toast(`Einladung an ${email} gesendet.`);
+        await api.addMember(projectId, { email, role });
+        ui.closeModal('addMemberModal');
+        ui.toast(`${email} wurde als Mitglied hinzugefügt.`);
         await loadData();
         render();
+        renderMemberItems();
       } catch (error) {
         ui.showFormError(form, error.message);
       }
@@ -641,7 +606,7 @@
       }
     });
     state.newSubtasks = ui.subtaskEditor($('#newSubtasks'), {
-      members: state.project.members, subtasks: [], currentUserId: state.me.id,
+      members: state.project.members, subtasks: [], currentUserId: state.me.id, allowAssignment: false,
       getAssignableIds: () => state.picker ? state.picker.getValue().participantIds : []
     });
     setTaskType('MEETING');
@@ -653,8 +618,9 @@
     state.newTaskType = type;
     document.querySelectorAll('#newTaskForm [data-type]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.type === type)));
     const isLong = type === 'LANGES_TODO';
-    $('#taskStartLabel').textContent = isLong ? 'Start' : 'Start *';
+    $('#taskStartLabel').textContent = 'Start *';
     $('#taskEndLabel').textContent = isLong ? 'Frist *' : 'Ende *';
+    $('#taskPriority').closest('.field').hidden = !isLong;
     $('#availabilityBox').hidden = isLong;
     $('#newSubtaskSection').hidden = !isLong;
   }
@@ -712,7 +678,7 @@
     let error = null;
     if (!title) error = 'Bitte einen Titel eingeben.';
     else if (times.error) error = times.error;
-    else if (type === 'MEETING' && !times.start) error = 'Bitte einen Start angeben.';
+    else if (!times.start) error = 'Bitte einen Start angeben.';
     else if (!times.end) error = type === 'MEETING' ? 'Bitte ein Ende angeben.' : 'Bitte eine Frist angeben.';
     else if (times.start && times.end <= times.start) error = 'Ende / Frist muss nach dem Start liegen.';
     else if (state.picker.isEmpty()) error = 'Bitte mindestens einen Teilnehmer auswählen.';
@@ -816,7 +782,6 @@
     else if (action === 'plan-sub') openSchedule(task, sub);
     else if (action === 'edit-member') openRoleEditor(el.dataset.user);
     else if (action === 'remove-member') removeMember(el);
-    else if (action === 'withdraw') withdrawInvitation(el);
     else if (action === 'back-to-project') {
       ui.closeModal('subtaskModal');
       ui.closeModal('taskDetailModal');
@@ -830,14 +795,14 @@
   }
 
   function bindEvents() {
-    ['#taskBody', '#doneList', '#taskDetailBody', '#subtaskBody', '#subtaskFoot', '#memberItems', '#invitationItems'].forEach(sel => {
+    ['#taskBody', '#doneList', '#taskDetailBody', '#subtaskBody', '#subtaskFoot', '#memberItems'].forEach(sel => {
       $(sel).addEventListener('click', handleClick);
       $(sel).addEventListener('change', handleChange);
     });
 
     $('#openMembersButton').addEventListener('click', openMembers);
-    $('#openInviteButton').addEventListener('click', openInvite);
-    $('#inviteForm').addEventListener('submit', sendInvitation);
+    $('#openAddMemberButton').addEventListener('click', openAddMember);
+    $('#addMemberForm').addEventListener('submit', submitMember);
     $('#roleForm').addEventListener('submit', saveRole);
     $('#editProjectButton').addEventListener('click', openEditProject);
     $('#editProjectForm').addEventListener('submit', saveProject);

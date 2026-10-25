@@ -10,6 +10,13 @@
 
   const $ = (selector, root) => (root || document).querySelector(selector);
   const $$ = (selector, root) => Array.from((root || document).querySelectorAll(selector));
+  const componentEvents = new WeakMap();
+  function freshEvents(container) {
+    componentEvents.get(container)?.abort();
+    const controller = new AbortController();
+    componentEvents.set(container, controller);
+    return { signal: controller.signal };
+  }
 
   // Schutz vor XSS: alle Texte aus dem Backend vor innerHTML escapen
   function esc(value) {
@@ -160,7 +167,7 @@
     toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
   }
 
-  /* ---------- Kopfzeile (Name, Einladungs-Badge, Abmelden) ---------- */
+  /* ---------- Kopfzeile (Name und Abmelden) ---------- */
   async function initTopbar(api) {
     const logoutButton = $('#logoutButton');
     if (logoutButton) {
@@ -171,11 +178,9 @@
       });
     }
     try {
-      const [me, count] = await Promise.all([api.getCurrentUser(), api.getOpenInvitationCount()]);
+      const me = await api.getCurrentUser();
       const nameEl = $('#currentUserName');
       if (nameEl) nameEl.textContent = me.name;
-      const badge = $('#invitationBadge');
-      if (badge) { badge.textContent = count; badge.hidden = !count; }
       return me;
     } catch (e) {
       return null;
@@ -184,6 +189,7 @@
 
   /* ---------- Teilnehmer-Auswahl mit Chips (Wireframe "Mia M. x  + hinzufuegen") ---------- */
   function participantPicker(container, options) {
+    const events = freshEvents(container);
     const members = options.members || [];
     let all = !!options.allParticipants;
     let selected = all ? [] : (options.selectedIds || []).slice();
@@ -214,7 +220,7 @@
       if (id === 'ALLE') all = false; else selected = selected.filter(x => x !== id);
       render();
       onChange();
-    });
+    }, events);
     container.addEventListener('change', event => {
       if (!event.target.classList.contains('chip-select')) return;
       const id = event.target.value;
@@ -222,7 +228,7 @@
       if (id === 'ALLE') { all = true; selected = []; } else selected.push(id);
       render();
       onChange();
-    });
+    }, events);
 
     render();
     return {
@@ -233,6 +239,7 @@
 
   /* ---------- Teilaufgaben-Editor (Wireframe "Task bearbeiten") ---------- */
   function subtaskEditor(container, options) {
+    const events = freshEvents(container);
     const members = options.members || [];
     const getAssignableIds = options.getAssignableIds || (() => members.map(m => m.userId));
     let items = (options.subtasks || []).map(s => Object.assign({}, s));
@@ -251,7 +258,7 @@
           </div>
           <textarea class="textarea small" data-field="description" placeholder="Beschreibung (optional)" aria-label="Beschreibung der Teilaufgabe ${index + 1}">${esc(item.description)}</textarea>
           <label class="meta">Zuständig
-            <select class="select" data-field="assigneeId" aria-label="Zuständigkeit Teilaufgabe ${index + 1}">
+            <select class="select" data-field="assigneeId" aria-label="Zuständigkeit Teilaufgabe ${index + 1}" ${options.allowAssignment === false ? 'disabled title="Neue Unteraufgaben werden zunächst unzugewiesen angelegt."' : ''}>
               <option value="">Noch nicht zugewiesen</option>${optionsHtml}
             </select>
           </label>
@@ -272,14 +279,14 @@
       const field = event.target.dataset.field;
       item[field] = field === 'assigneeId' ? (event.target.value || null) : event.target.value;
     }
-    container.addEventListener('input', updateField);
-    container.addEventListener('change', updateField);
+    container.addEventListener('input', updateField, events);
+    container.addEventListener('change', updateField, events);
     container.addEventListener('click', event => {
       const button = event.target.closest('[data-delete]');
       if (!button) return;
       items.splice(Number(button.dataset.delete), 1);
       render();
-    });
+    }, events);
 
     render();
     return {
