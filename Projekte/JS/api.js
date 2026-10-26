@@ -355,10 +355,12 @@
       return normalizeProject(raw);
     },
 
-    // BACKEND: GET /projects/{projectId}/members -> [{ userId, firstName, lastName, role }]
+    // KI-Log Nr. 66: GET liefert die Members-Antwort und protokolliert nur JSON-Fachdaten.
+    // BACKEND: GET /projects/{projectId}/members -> { message, data: [{ userId, firstName, lastName, role, email }] }
     async getMembers(projectId) {
       if (USE_MOCK) return mock.getProject(projectId).then(project => project.members || []);
       const raw = await request('GET', '/projects/' + encodeURIComponent(projectId) + '/members');
+      console.info('[KI-Log Nr. 66] GET /projects/' + projectId + '/members response JSON:', JSON.stringify(raw, null, 2));
       const data = raw && (raw.data || raw);
       const members = Array.isArray(data) ? data : (data.members || data.items || []);
       return members.map(member => ({
@@ -379,13 +381,13 @@
 
     /* ---------- Mitglieder ---------- */
 
-    // BACKEND: PATCH /projects/{projectId}/members/{userId}  Body { role } -> 200
+    // KI-Log Nr. 67: Die Rollenänderung nutzt den vertraglich definierten PUT-Endpunkt.
+    // BACKEND: PUT /projects/{projectId}/members/{userId}  Body { role } -> 200
     // 409, wenn dadurch keine Projektleitung mehr uebrig waere
     updateMemberRole(projectId, userId, role) {
       if (USE_MOCK) return mock.updateMemberRole(projectId, userId, role);
-      // BACKEND: Mia-Projekt nutzt PL/member als Rollenwerte; bei abweichendem Enum nur diese Abbildung ändern.
-      const apiRole = role === 'PROJEKTLEITUNG' ? 'PL' : 'member';
-      return request('PATCH', '/projects/' + encodeURIComponent(projectId) + '/members/' + encodeURIComponent(userId), { role: apiRole });
+      const apiRole = role === 'PROJEKTLEITUNG' ? 'PROJECT_LEADER' : 'MEMBER';
+      return request('PUT', '/projects/' + encodeURIComponent(projectId) + '/members/' + encodeURIComponent(userId), { role: apiRole });
     },
 
     // BACKEND: DELETE /projects/{projectId}/members/{userId} -> 204
@@ -394,16 +396,18 @@
       return request('DELETE', '/projects/' + encodeURIComponent(projectId) + '/members/' + encodeURIComponent(userId));
     },
 
-    // Direkte Mitgliedschaft, kein Einladungsprozess.
-    // BACKEND: POST /projects/{projectId}/members
-    // JSON-Body { email, role } -> 200 Mitgliedschaft; Token nur im Header.
-    addMember(projectId, data) {
+    // KI-Log Nr. 68: POST protokolliert Request- und Response-JSON für die Rollenfehleranalyse.
+    // BACKEND: POST /projects/{projectId}/members -> { message: "member added" }
+    async addMember(projectId, data) {
       const payload = {
         email: String(data.email || '').trim().toLowerCase(),
         role: data.role === 'PROJEKTLEITUNG' ? 'PROJECT_LEADER' : 'MEMBER'
       };
       if (USE_MOCK) return mock.addMember(projectId, data);
-      return request('POST', '/projects/' + encodeURIComponent(projectId) + '/members', payload);
+      console.info('[KI-Log Nr. 68] POST /projects/' + projectId + '/members request JSON:', JSON.stringify(payload, null, 2));
+      const raw = await request('POST', '/projects/' + encodeURIComponent(projectId) + '/members', payload);
+      console.info('[KI-Log Nr. 68] POST /projects/' + projectId + '/members response JSON:', JSON.stringify(raw, null, 2));
+      return raw;
     },
 
     /* ---------- Tasks (Meeting / Langes To-Do) ---------- */

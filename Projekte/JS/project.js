@@ -479,7 +479,7 @@
     const role = form.querySelector('input[name="role"]:checked').value;
     await ui.withBusy($('#roleSubmit'), async () => {
       try {
-        // BACKEND: PATCH /projects/{projectId}/members/{userId}  { role }
+        // KI-Log Nr. 69: Rollenänderung sendet PUT mit { role }.
         await api.updateMemberRole(projectId, state.editingMemberId, role);
         ui.closeModal('roleModal');
         ui.toast('Rolle gespeichert.');
