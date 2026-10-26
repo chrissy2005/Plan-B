@@ -210,6 +210,7 @@
         id: String(sub.id ?? sub.subtaskId ?? ''),
         title: sub.title || sub.name || '',
         description: sub.description || '',
+        priority: ({ HIGH: 'HOCH', MEDIUM: 'MITTEL', LOW: 'NIEDRIG' })[String(sub.priority || '').toUpperCase()] || sub.priority || 'MITTEL',
         assigneeId: sub.assigneeId || sub.userId || sub.assignedUserId || null,
         done: !!(sub.done ?? sub.completed),
         schedule: sub.schedule || null
@@ -425,66 +426,77 @@
       return meetings.concat(todos);
     },
 
+    // KI-Log Nr. 65: Detail-GETs bleiben ebenfalls nach Ressource getrennt.
+    getMeeting(meetingId) {
+      if (USE_MOCK) return Promise.resolve(null);
+      return request('GET', '/meetings/' + encodeURIComponent(meetingId)).then(normalizeMeeting);
+    },
+
+    getLongTodo(longToDoId) {
+      if (USE_MOCK) return Promise.resolve(null);
+      return request('GET', '/long-todos/' + encodeURIComponent(longToDoId)).then(normalizeLongTodo);
+    },
+
     // KI-Log Nr. 43: Meeting und langes To-do verwenden getrennte JSON-Payloads.
-    // BACKEND: POST https://plan-b-api-6486e78ed17c.herokuapp.com/projects/{projectId}/tasks
-    // Meeting: { type, title, description, start, end, priority,
-    //            allParticipants, participantIds }
-    // Langes To-do: { type, title, description, start, end, priority,
-    //                 allParticipants, participantIds, subtasks }
+    // BACKEND: POST /projects/{projectId}/meetings oder /long-todos
     async createTask(projectId, data) {
-      if (USE_MOCK) return mock.createTask(projectId, data);
-      const raw = await request('POST', '/projects/' + encodeURIComponent(projectId) + '/tasks', data);
-      return normalizeTask((raw && raw.task) || raw);
+      return data.type === 'MEETING' ? api.createMeeting(projectId, data) : api.createLongTodo(projectId, data);
     },
 
     // KI-Log Nr. 43: Meeting-Payload ohne Teilaufgaben.
     createMeeting(projectId, data) {
-      return api.createTask(projectId, {
-        type: 'MEETING',
+      if (USE_MOCK) return mock.createTask(projectId, data);
+      return request('POST', '/projects/' + encodeURIComponent(projectId) + '/meetings', {
         title: data.title,
         description: data.description,
-        start: data.start,
-        end: data.end,
-        priority: data.priority,
-        allParticipants: data.allParticipants,
+        startDateTime: data.start,
+        endDateTime: data.end,
         participantIds: data.participantIds
       });
     },
 
     // KI-Log Nr. 43: Langes-To-do-Payload mit Teilaufgaben und optionalem Start.
     createLongTodo(projectId, data) {
-      return api.createTask(projectId, {
-        type: 'LANGES_TODO',
+      if (USE_MOCK) return mock.createTask(projectId, data);
+      return request('POST', '/projects/' + encodeURIComponent(projectId) + '/long-todos', {
         title: data.title,
         description: data.description,
-        start: data.start || null,
-        end: data.end,
+        startDateTime: data.start || null,
+        endDateTime: data.end,
         priority: data.priority,
-        allParticipants: data.allParticipants,
-        participantIds: data.participantIds,
-        subtasks: data.subtasks
+        assignedMemberIds: data.participantIds,
+        subtasks: (data.subtasks || []).map(subtask => ({
+          title: subtask.title,
+          description: subtask.description,
+          priority: subtask.priority
+        }))
       });
     },
 
     // BACKEND: PUT /tasks/{taskId}  Body = kompletter Task inkl. subtasks -> 200 Task
     // Neue Teilaufgaben haben id = null, das Backend vergibt die IDs.
-    async updateTask(taskId, data) {
+    async updateTask(taskId, data, type) {
       if (USE_MOCK) return mock.updateTask(taskId, data);
-      const raw = await request('PUT', '/tasks/' + encodeURIComponent(taskId), data);
-      return normalizeTask((raw && raw.task) || raw);
+      const base = type === 'MEETING' ? '/meetings/' : '/long-todos/';
+      const updates = [['title', data.title], ['description', data.description], ['startDateTime', data.start], ['endDateTime', data.end]];
+      if (type !== 'MEETING') updates.push(['priority', data.priority]);
+      for (const [attribute, newValue] of updates) {
+        await request('PUT', base + encodeURIComponent(taskId), { update: { attribute, newValue } });
+      }
     },
 
     // BACKEND: DELETE /tasks/{taskId} -> 204
-    deleteTask(taskId) {
+    deleteTask(taskId, type) {
       if (USE_MOCK) return mock.deleteTask(taskId);
-      return request('DELETE', '/tasks/' + encodeURIComponent(taskId));
+      const base = type === 'MEETING' ? '/meetings/' : '/long-todos/';
+      return request('DELETE', base + encodeURIComponent(taskId));
     },
 
     // BACKEND: PATCH /tasks/{taskId}  Body { done } -> 200 Task  (nur Meetings, nur Teilnehmer)
-    async setTaskDone(taskId, done) {
+    async setTaskDone(taskId, done, type) {
       if (USE_MOCK) return mock.setTaskDone(taskId, done);
-      const raw = await request('PATCH', '/tasks/' + encodeURIComponent(taskId), { done });
-      return normalizeTask((raw && raw.task) || raw);
+      if (type === 'LANGES_TODO') return request('PUT', '/long-todos/' + encodeURIComponent(taskId) + '/done', { done });
+      return request('PUT', '/meetings/' + encodeURIComponent(taskId), { update: { attribute: 'done', newValue: done } });
     },
 
     /* ---------- Teilaufgaben ---------- */
@@ -493,21 +505,22 @@
     // 409 Body { assigneeName }, wenn jemand anderes schneller war (Wireframe "Nicht uebernommen")
     claimSubtask(taskId, subtaskId) {
       if (USE_MOCK) return mock.claimSubtask(taskId, subtaskId);
-      return request('POST', '/tasks/' + encodeURIComponent(taskId) + '/subtasks/' + encodeURIComponent(subtaskId) + '/claim');
+      return Promise.reject(new ApiError(400, 'Untertasks haben keine Zuständigkeit.'));
     },
 
     // BACKEND: PATCH /tasks/{taskId}/subtasks/{subtaskId}  Body { done } -> 200 Task
     // Backend setzt das lange To-Do automatisch auf erledigt, wenn alle Teilaufgaben erledigt sind.
     async setSubtaskDone(taskId, subtaskId, done) {
       if (USE_MOCK) return mock.setSubtaskDone(taskId, subtaskId, done);
-      const raw = await request('PATCH', '/tasks/' + encodeURIComponent(taskId) + '/subtasks/' + encodeURIComponent(subtaskId), { done });
-      return raw && raw.task ? normalizeTask(raw.task) : (raw || { id: subtaskId, done });
+      return request('PUT', '/long-todos/' + encodeURIComponent(taskId) + '/subtasks/' + encodeURIComponent(subtaskId), {
+        update: { attribute: 'done', newValue: done }
+      });
     },
 
     // KI-Log Nr. 39 | BACKEND: POST /tasks/{taskId}/subtasks/{subtaskId}/schedule  Body { date, from, to } -> 200 Teilaufgabe
     scheduleSubtask(taskId, subtaskId, slot) {
       if (USE_MOCK) return mock.scheduleSubtask(taskId, subtaskId, slot);
-      return request('POST', '/tasks/' + encodeURIComponent(taskId) + '/subtasks/' + encodeURIComponent(subtaskId) + '/schedule', slot);
+      return Promise.reject(new ApiError(400, 'Untertasks können nicht eingeplant werden.'));
     },
 
     // KI-Log Nr. 39 | BACKEND: GET /availability/free-slots?userId=...&until=... -> [{ date, from, to }]

@@ -97,7 +97,7 @@
         <tr>
           <td><strong>${esc(task.title)}</strong></td>
           <td>${esc(ui.TYPE[task.type])}</td>
-          <td><span class="pill">${esc(ui.PRIO[task.priority])}</span></td>
+          <td>${isLong ? `<span class="pill">${esc(ui.PRIO[task.priority] || task.priority || '–')}</span>` : '–'}</td>
           <td>${esc(participantsText(task))}</td>
           <td>${task.start ? esc(ui.fmtShort(task.start)) : '–'}</td>
           <td>${isLong ? 'Frist ' : ''}${esc(ui.fmtShort(task.end))}</td>
@@ -132,14 +132,9 @@
       members: state.project.members,
       allParticipants: task.allParticipants,
       selectedIds: task.participantIds,
-      onChange: () => {
-        if (state.subtasks) state.subtasks.setParticipants(state.picker.getValue().participantIds);
-      }
+      onChange: () => {}
     });
-    state.subtasks = ui.subtaskEditor($('#editSubtasks'), {
-      members: state.project.members, subtasks: task.subtasks, currentUserId: state.me && state.me.id,
-      getAssignableIds: () => state.picker ? state.picker.getValue().participantIds : []
-    });
+    state.subtasks = ui.subtaskEditor($('#editSubtasks'), { subtasks: task.subtasks });
     applyType(task.type);
     ui.openModal('editTaskModal');
   }
@@ -147,6 +142,7 @@
   function applyType(type) {
     const isLong = type === 'LANGES_TODO';
     $('#editSubtaskSection').hidden = !isLong;
+    $('#editTaskPriority').closest('.field').hidden = !isLong;
     $('#editTaskStartLabel').textContent = isLong ? 'Start' : 'Start *';
     $('#editTaskEndLabel').textContent = isLong ? 'Ende / Frist *' : 'Ende *';
   }
@@ -190,8 +186,8 @@
 
     await ui.withBusy($('#saveTaskButton'), async () => {
       try {
-        // BACKEND: PUT /tasks/{taskId}  (kompletter Task inkl. Teilaufgaben; neue Teilaufgaben mit id = null)
-        await api.updateTask(state.editingId, data);
+        // KI-Log Nr. 62: PUT nutzt Meeting- oder Long-To-Do-Endpoint.
+        await api.updateTask(state.editingId, data, type);
         ui.closeModal('editTaskModal');
         ui.toast('Task gespeichert.');
         await reload();
@@ -207,8 +203,8 @@
     if (!window.confirm(`Task „${task.title}“ wirklich löschen? Das kann nicht rückgängig gemacht werden.`)) return;
     await ui.withBusy(button, async () => {
       try {
-        // BACKEND: DELETE /tasks/{taskId}
-        await api.deleteTask(taskId);
+        // KI-Log Nr. 63: DELETE nutzt den Endpoint des Task-Typs.
+        await api.deleteTask(taskId, task.type);
         ui.closeModal('editTaskModal');
         ui.toast('Task gelöscht.');
         await reload();

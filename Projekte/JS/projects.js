@@ -79,7 +79,7 @@
     await ui.withBusy($('#createProjectSubmit'), async () => {
       try {
         // KI-Log Nr. 57: Nach dem POST die Projektansicht öffnen.
-        // project.js sendet dort GET /projects/{projectId} und GET /projects/{projectId}/tasks.
+        // project.js sendet dort getrennte GETs für Meetings und Long-To-Dos.
         // BACKEND: POST /projects -> { id|projectId, message }
         const created = await api.createProject({ title, description });
         window.location.href = 'project.html?id=' + encodeURIComponent(created.id);

@@ -233,16 +233,10 @@
 
   /* ---------- Teilaufgaben-Editor (Wireframe "Task bearbeiten") ---------- */
   function subtaskEditor(container, options) {
-    const members = options.members || [];
-    const getAssignableIds = options.getAssignableIds || (() => members.map(m => m.userId));
     let items = (options.subtasks || []).map(s => Object.assign({}, s));
-
-    let assignableIds = getAssignableIds();
 
     function render() {
       container.innerHTML = items.map((item, index) => {
-        const eligible = members.filter(m => assignableIds.includes(m.userId));
-        const optionsHtml = eligible.map(m => `<option value="${esc(m.userId)}" ${m.userId === item.assigneeId ? 'selected' : ''}>${esc(m.name)}${m.userId === options.currentUserId ? ' (du)' : ''}</option>`).join('');
         return `
         <div class="subtask-editor" data-index="${index}">
           <div class="row">
@@ -250,9 +244,11 @@
             <button type="button" class="icon-btn" data-delete="${index}" aria-label="Teilaufgabe löschen" title="Teilaufgabe löschen">${ICON.trash}</button>
           </div>
           <textarea class="textarea small" data-field="description" placeholder="Beschreibung (optional)" aria-label="Beschreibung der Teilaufgabe ${index + 1}">${esc(item.description)}</textarea>
-          <label class="meta">Zuständig
-            <select class="select" data-field="assigneeId" aria-label="Zuständigkeit Teilaufgabe ${index + 1}">
-              <option value="">Noch nicht zugewiesen</option>${optionsHtml}
+          <label class="meta">Priorität
+            <select class="select" data-field="priority" aria-label="Priorität Teilaufgabe ${index + 1}">
+              <option value="HOCH" ${item.priority === 'HOCH' ? 'selected' : ''}>Hoch</option>
+              <option value="MITTEL" ${!item.priority || item.priority === 'MITTEL' ? 'selected' : ''}>Mittel</option>
+              <option value="NIEDRIG" ${item.priority === 'NIEDRIG' ? 'selected' : ''}>Niedrig</option>
             </select>
           </label>
           <div class="meta">${item.done ? 'erledigt' : 'offen'}</div>
@@ -260,17 +256,12 @@
       }).join('');
     }
 
-    function updateParticipants(ids) {
-      assignableIds = (ids || []).slice();
-      render();
-    }
-
     function updateField(event) {
       const card = event.target.closest('.subtask-editor');
       if (!card || !event.target.dataset.field) return;
       const item = items[Number(card.dataset.index)];
       const field = event.target.dataset.field;
-      item[field] = field === 'assigneeId' ? (event.target.value || null) : event.target.value;
+      item[field] = event.target.value;
     }
     container.addEventListener('input', updateField);
     container.addEventListener('change', updateField);
@@ -284,15 +275,13 @@
     render();
     return {
       add() {
-        items.push({ id: null, title: '', description: '', assigneeId: null, done: false });
+        items.push({ id: null, title: '', description: '', priority: 'MITTEL', done: false });
         render();
         const inputs = container.querySelectorAll('[data-field="title"]');
         if (inputs.length) inputs[inputs.length - 1].focus();
       },
-      setParticipants: updateParticipants,
       getValue() {
-        const allowed = new Set(getAssignableIds());
-        return items.map(s => ({ id: s.id, title: String(s.title || '').trim(), description: String(s.description || '').trim(), assigneeId: s.assigneeId && allowed.has(s.assigneeId) ? s.assigneeId : null, done: !!s.done }));
+        return items.map(s => ({ id: s.id, title: String(s.title || '').trim(), description: String(s.description || '').trim(), priority: s.priority || 'MITTEL', done: !!s.done }));
       }
     };
   }

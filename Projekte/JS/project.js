@@ -122,8 +122,7 @@
     return task.participantIds.map(id => (markYou ? nameWithYou(id) : memberName(id))).join(', ');
   }
   function canTickMeeting(task) { return state.isActive && isParticipant(task); }
-  function canTickSub(sub) { return state.isActive && sub.assigneeId === state.me.id; }
-  function canClaim(task, sub) { return state.isActive && !task.done && !sub.assigneeId && isParticipant(task); }
+  function canTickSub(sub) { return state.isActive && !sub.done; }
 
   function byStart(a, b) { return (a.start || a.end || '').localeCompare(b.start || b.end || ''); }
 
@@ -164,7 +163,7 @@
         <th scope="col">Erledigt</th>
         <th scope="col">Aufgabe</th>
         <th scope="col">Typ</th>
-        <th scope="col">${lead ? 'Teilnehmer' : 'Zuständig / Teilnehmer'}</th>
+        <th scope="col">Teilnehmer</th>
         <th scope="col">Start</th>
         <th scope="col">Ende / Frist</th>
         <th scope="col">Prio</th>
@@ -207,7 +206,7 @@
         <td>${esc(participantsText(task))}</td>
         <td>${task.start ? esc(ui.fmtShort(task.start)) : '–'}</td>
         <td>${isLong ? 'Frist ' : ''}${esc(ui.fmtShort(task.end))}</td>
-        <td><span class="pill">${esc(ui.PRIO[task.priority])}</span></td>
+        <td>${isLong ? `<span class="pill">${esc(ui.PRIO[task.priority] || task.priority || '–')}</span>` : '–'}</td>
         <td>${progress}</td>
       </tr>`;
   }
@@ -216,18 +215,12 @@
   function subtaskRows(task) {
     if (state.isLead || task.type !== 'LANGES_TODO' || !state.expanded.has(task.id)) return '';
     return task.subtasks.map(sub => {
-      let who;
-      if (sub.assigneeId) who = esc(memberName(sub.assigneeId));
-      else if (canClaim(task, sub)) who = `<button type="button" class="btn btn-strong btn-sm" data-action="claim" data-task="${esc(task.id)}" data-sub="${esc(sub.id)}">Übernehmen</button>`;
-      else if (isParticipant(task)) who = 'frei';
-      else who = 'frei · nur für Teilnehmer';
-
       return `
         <tr class="row-sub">
           <td><input type="checkbox" data-action="sub-done" data-task="${esc(task.id)}" data-sub="${esc(sub.id)}" aria-label="${esc(sub.title)} erledigt" ${sub.done ? 'checked' : ''} ${canTickSub(sub) ? '' : 'disabled'}></td>
           <td><div class="sub-title">↳ <button type="button" class="link-btn light" data-action="open-sub" data-task="${esc(task.id)}" data-sub="${esc(sub.id)}">${esc(sub.title)}</button></div></td>
           <td>Teilaufgabe</td>
-          <td>${who}</td>
+          <td>${esc(ui.PRIO[sub.priority] || sub.priority || 'Mittel')}</td>
           <td>–</td>
           <td>wie To-Do</td>
           <td>–</td>
@@ -289,8 +282,8 @@
           <div class="detail-value${isLong ? ' strong' : ''}">${esc(ui.fmtLong(task.end))}</div>
         </div>
         <div>
-          <div class="detail-label">Priorität</div>
-          <div class="detail-value">${esc(ui.PRIO[task.priority])}</div>
+          ${isLong ? `<div class="detail-label">Priorität</div>
+          <div class="detail-value">${esc(ui.PRIO[task.priority] || task.priority || '–')}</div>` : ''}
         </div>
         <div>
           <div class="detail-label">Projekt</div>
@@ -305,29 +298,15 @@
   }
 
   function subtaskItem(task, sub) {
-    const mine = sub.assigneeId === state.me.id;
-    let checkbox;
-    if (mine) checkbox = `<input type="checkbox" data-action="sub-done" data-task="${esc(task.id)}" data-sub="${esc(sub.id)}" aria-label="${esc(sub.title)} erledigt" ${sub.done ? 'checked' : ''} ${canTickSub(sub) ? '' : 'disabled'}>`;
-    else if (sub.done) checkbox = `<input type="checkbox" checked disabled aria-label="${esc(sub.title)} erledigt">`;
-    else checkbox = '<span class="checkbox-spacer"></span>';
-
-    const who = sub.assigneeId ? nameWithYou(sub.assigneeId) : 'nicht zugewiesen';
-    const claim = canClaim(task, sub)
-      ? `<button type="button" class="btn btn-strong" data-action="claim" data-task="${esc(task.id)}" data-sub="${esc(sub.id)}">Übernehmen</button>`
-      : '';
-    const plan = sub.assigneeId === state.me.id && !sub.done
-      ? `<button type="button" class="btn btn-sm" data-action="plan-sub" data-task="${esc(task.id)}" data-sub="${esc(sub.id)}">${sub.schedule ? 'Ändern' : 'Einplanen'}</button>`
-      : '';
-    const scheduled = sub.schedule ? ` · eingeplant ${esc(ui.fmtDate(sub.schedule.date))}, ${esc(sub.schedule.from)}–${esc(sub.schedule.to)}` : '';
+    const checkbox = `<input type="checkbox" data-action="sub-done" data-task="${esc(task.id)}" data-sub="${esc(sub.id)}" aria-label="${esc(sub.title)} erledigt" ${sub.done ? 'checked' : ''} ${canTickSub(sub) ? '' : 'disabled'}>`;
 
     return `
       <div class="subtask-item${sub.done ? ' is-done' : ''}">
         ${checkbox}
         <div class="info">
           <button type="button" class="link-btn${sub.done ? ' strike' : ''}" data-action="open-sub" data-task="${esc(task.id)}" data-sub="${esc(sub.id)}">${esc(sub.title)}</button>
-          <small>${esc(who)} · ${sub.done ? 'erledigt' : 'offen'}${scheduled}</small>
+          <small>${esc(ui.PRIO[sub.priority] || sub.priority || 'Mittel')} · ${sub.done ? 'erledigt' : 'offen'}</small>
         </div>
-        ${plan}${claim}
       </div>`;
   }
 
@@ -352,8 +331,8 @@
         <div class="detail-value title">${esc(sub.title)}</div>
         <div class="detail-label">Frist (vom langen To-Do)</div>
         <div class="detail-value strong">${esc(ui.fmtLong(task.end))}</div>
-        <div class="detail-label">Zuständigkeit</div>
-        <div class="detail-value">${esc(conflictName)}</div>`;
+        <div class="detail-label">Priorität</div>
+        <div class="detail-value">${esc(ui.PRIO[sub.priority] || sub.priority || 'Mittel')}</div>`;
       $('#subtaskFoot').innerHTML = '<button type="button" class="btn btn-primary btn-lg" data-action="back-to-project">Zurück zum Projekt</button>';
       return;
     }
@@ -371,18 +350,14 @@
           <div class="detail-value strong">${esc(ui.fmtLong(task.end))}</div>
         </div>
       </div>
-      <div class="detail-label">Zuständigkeit</div>
-      <div class="detail-value">${sub.assigneeId ? esc(nameWithYou(sub.assigneeId)) + ' · ' + (sub.done ? 'erledigt' : 'offen') : 'noch nicht zugewiesen'}</div>
+      <div class="detail-label">Priorität</div>
+      <div class="detail-value">${esc(ui.PRIO[sub.priority] || sub.priority || 'Mittel')}</div>
       <div class="detail-label">Beschreibung</div>
       <div class="detail-desc">${sub.description ? esc(sub.description) : 'Keine Beschreibung.'}</div>`;
 
-    const scheduleAction = sub.assigneeId === state.me.id && !sub.done
-      ? `<button type="button" class="btn btn-lg" data-action="plan-sub" data-task="${esc(task.id)}" data-sub="${esc(sub.id)}">${sub.schedule ? 'Einplanung ändern' : 'Einplanen'}</button>`
-      : '';
     $('#subtaskFoot').innerHTML = `
       <button type="button" class="btn btn-lg" data-close>Schließen</button>
-      ${scheduleAction}
-      ${canClaim(task, sub) ? `<button type="button" class="btn btn-primary btn-lg" data-action="claim" data-task="${esc(task.id)}" data-sub="${esc(sub.id)}">Aufgabe übernehmen</button>` : ''}`;
+      `;
   }
 
   /* ================= Aktionen To-Dos ================= */
@@ -391,8 +366,9 @@
     const checked = checkbox.checked;
     checkbox.disabled = true;
     try {
-      // BACKEND: PATCH /tasks/{taskId}  { done }
-      await api.setTaskDone(checkbox.dataset.task, checked);
+      // KI-Log Nr. 60: Done wird an den Meeting- bzw. Long-To-Do-Endpoint gesendet.
+      const task = findTask(checkbox.dataset.task);
+      await api.setTaskDone(checkbox.dataset.task, checked, task && task.type);
       ui.toast(checked ? 'Als erledigt markiert.' : 'Wieder geöffnet.');
       await refresh();
     } catch (error) {
@@ -406,7 +382,7 @@
     const checked = checkbox.checked;
     checkbox.disabled = true;
     try {
-      // BACKEND: PATCH /tasks/{taskId}/subtasks/{subtaskId}  { done }
+      // KI-Log Nr. 61: Subtask-Done nutzt /long-todos/{id}/subtasks/{subtaskId}.
       const task = await api.setSubtaskDone(checkbox.dataset.task, checkbox.dataset.sub, checked);
       ui.toast(task && task.done ? 'Alle Teilaufgaben erledigt – das lange To-Do ist automatisch erledigt.' : 'Teilaufgabe aktualisiert.');
       await refresh();
@@ -603,13 +579,9 @@
       selectedIds: [state.me.id],
       onChange: () => {
         resetAvailability();
-        if (state.newSubtasks) state.newSubtasks.setParticipants(state.picker.getValue().participantIds);
       }
     });
-    state.newSubtasks = ui.subtaskEditor($('#newSubtasks'), {
-      members: state.project.members, subtasks: [], currentUserId: state.me.id,
-      getAssignableIds: () => state.picker ? state.picker.getValue().participantIds : []
-    });
+    state.newSubtasks = ui.subtaskEditor($('#newSubtasks'), { subtasks: [] });
     setTaskType('MEETING');
     resetAvailability();
     ui.openModal('newTaskModal');
@@ -623,6 +595,7 @@
     $('#taskEndLabel').textContent = isLong ? 'Frist *' : 'Ende *';
     $('#availabilityBox').hidden = isLong;
     $('#newSubtaskSection').hidden = !isLong;
+    $('#taskPriority').closest('.field').hidden = !isLong;
   }
 
   function resetAvailability() {
@@ -699,7 +672,7 @@
     await ui.withBusy($('#newTaskSubmit'), async () => {
       try {
         // KI-Log Nr. 43: Je Task-Typ erhält einen eigenen JSON-Payload.
-        // BACKEND: POST https://plan-b-api-6486e78ed17c.herokuapp.com/projects/{projectId}/tasks
+        // KI-Log Nr. 64: Die API-Methode wählt /meetings oder /long-todos anhand des Typs.
         const created = type === 'MEETING'
           ? await api.createMeeting(projectId, data)
           : await api.createLongTodo(projectId, data);
