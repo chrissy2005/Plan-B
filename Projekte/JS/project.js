@@ -24,7 +24,6 @@
     me: null,
     project: null,
     tasks: [],
-    invitations: [],
     expanded: new Set(),
     isLead: false,
     isActive: true,
@@ -443,19 +442,12 @@
   /* ================= Mitglieder (S. 7) ================= */
 
   async function openMembers() {
-    renderMemberItems();
-    $('#invitationItems').innerHTML = '<p class="empty">Einladungen werden geladen …</p>';
-    ui.openModal('membersModal');
-    await loadInvitations();
-  }
-
-  async function loadInvitations() {
     try {
-      // BACKEND: GET /projects/{projectId}/invitations?status=AUSSTEHEND
-      state.invitations = await api.getInvitations(projectId);
-      renderInvitationItems();
+      state.project.members = await api.getMembers(projectId);
+      renderMemberItems();
+      ui.openModal('membersModal');
     } catch (error) {
-      $('#invitationItems').innerHTML = `<p class="empty">${esc(error.message)}</p>`;
+      ui.toast(error.message, true);
     }
   }
 
@@ -469,21 +461,6 @@
         </div>
         <button type="button" class="icon-btn" data-action="edit-member" data-user="${esc(m.userId)}" aria-label="Rolle von ${esc(m.name)} ändern" title="Rolle ändern">${ui.ICON.pencil}</button>
         <button type="button" class="icon-btn" data-action="remove-member" data-user="${esc(m.userId)}" aria-label="${esc(m.name)} entfernen" title="Aus Projekt entfernen">${ui.ICON.trash}</button>
-      </div>`).join('');
-  }
-
-  function renderInvitationItems() {
-    if (!state.invitations.length) {
-      $('#invitationItems').innerHTML = '<p class="empty">Keine ausstehenden Einladungen.</p>';
-      return;
-    }
-    $('#invitationItems').innerHTML = state.invitations.map(inv => `
-      <div class="member-item pending">
-        <div class="info">
-          <strong>${esc(inv.email)}</strong>
-          <small>${esc(ui.ROLE[inv.role])} · eingeladen am ${esc(ui.fmtDayMonth(inv.sentAt))} · ausstehend</small>
-        </div>
-        <button type="button" class="btn btn-lg" data-action="withdraw" data-invitation="${esc(inv.id)}">Zurückziehen</button>
       </div>`).join('');
   }
 
@@ -538,30 +515,19 @@
     });
   }
 
-  async function withdrawInvitation(button) {
-    await ui.withBusy(button, async () => {
-      try {
-        // BACKEND: DELETE /projects/{projectId}/invitations/{invitationId}
-        await api.withdrawInvitation(projectId, button.dataset.invitation);
-        ui.toast('Einladung zurückgezogen.');
-        await loadInvitations();
-      } catch (error) {
-        ui.toast(error.message, true);
-      }
-    });
-  }
-
-  /* ================= Mitglied einladen (S. 8) ================= */
+  /* ================= Mitglied hinzufügen (S. 8) ================= */
 
   function openInvite() {
+    if (!state.isLead) { ui.toast('Nur die Projektleitung darf Mitglieder hinzufügen.', true); return; }
     const form = $('#inviteForm');
     form.reset();
     ui.clearFormError(form);
     ui.openModal('inviteModal');
   }
 
-  async function sendInvitation(event) {
+  async function addMember(event) {
     event.preventDefault();
+    if (!state.isLead) { ui.toast('Nur die Projektleitung darf Mitglieder hinzufügen.', true); return; }
     const form = event.currentTarget;
     ui.clearFormError(form);
     const email = form.elements.email.value.trim().toLowerCase();
@@ -573,13 +539,13 @@
     }
     await ui.withBusy($('#inviteSubmit'), async () => {
       try {
-        // KI-Log Nr. 59: Einladung wird über die vorhandene Mitglieder-Schnittstelle gesendet.
         // BACKEND: POST /projects/{projectId}/members; Token liegt nur im Header.
-        await api.inviteMember(projectId, { email, role });
+        await api.addMember(projectId, { email, role });
         ui.closeModal('inviteModal');
-        ui.toast(`Einladung an ${email} gesendet.`);
-        await loadData();
+        ui.toast(`${email} wurde als Mitglied hinzugefügt.`);
+        state.project.members = await api.getMembers(projectId);
         render();
+        renderMemberItems();
       } catch (error) {
         ui.showFormError(form, error.message);
       }
@@ -816,7 +782,6 @@
     else if (action === 'plan-sub') openSchedule(task, sub);
     else if (action === 'edit-member') openRoleEditor(el.dataset.user);
     else if (action === 'remove-member') removeMember(el);
-    else if (action === 'withdraw') withdrawInvitation(el);
     else if (action === 'back-to-project') {
       ui.closeModal('subtaskModal');
       ui.closeModal('taskDetailModal');
@@ -830,14 +795,14 @@
   }
 
   function bindEvents() {
-    ['#taskBody', '#doneList', '#taskDetailBody', '#subtaskBody', '#subtaskFoot', '#memberItems', '#invitationItems'].forEach(sel => {
+    ['#taskBody', '#doneList', '#taskDetailBody', '#subtaskBody', '#subtaskFoot', '#memberItems'].forEach(sel => {
       $(sel).addEventListener('click', handleClick);
       $(sel).addEventListener('change', handleChange);
     });
 
     $('#openMembersButton').addEventListener('click', openMembers);
     $('#openInviteButton').addEventListener('click', openInvite);
-    $('#inviteForm').addEventListener('submit', sendInvitation);
+    $('#inviteForm').addEventListener('submit', addMember);
     $('#roleForm').addEventListener('submit', saveRole);
     $('#editProjectButton').addEventListener('click', openEditProject);
     $('#editProjectForm').addEventListener('submit', saveProject);

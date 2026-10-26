@@ -95,23 +95,21 @@
       </div>
       <div class="modal-body">
         <div id="memberItems"></div>
-        <h3 class="subheading">Ausstehende Einladungen</h3>
-        <div id="invitationItems"></div>
       </div>
       <div class="modal-foot no-border">
         <button class="btn btn-dashed btn-lg btn-block" type="button" id="openInviteButton">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-          Mitglied einladen
+          Mitglied hinzufügen
         </button>
       </div>
     </section>
   </div>
 
-  <!-- KI-Log Nr. 33: Mitglied einladen (Wireframe S. 8) -->
+  <!-- KI-Log Nr. 33: Mitglied hinzufügen (Wireframe S. 8) -->
   <div class="modal-backdrop" id="inviteModal" hidden>
     <form class="modal" id="inviteForm" role="dialog" aria-modal="true" aria-labelledby="inviteTitle" novalidate>
       <div class="modal-head">
-        <h2 id="inviteTitle">Mitglied einladen</h2>
+        <h2 id="inviteTitle">Mitglied hinzufügen</h2>
         <button class="modal-close" type="button" data-close aria-label="Schließen">×</button>
       </div>
       <div class="modal-body">
@@ -124,11 +122,11 @@
           <label class="radio"><input type="radio" name="role" value="TEAMMITGLIED" checked> Teammitglied</label>
           <label class="radio"><input type="radio" name="role" value="PROJEKTLEITUNG"> Projektleitung</label>
         </fieldset>
-        <p class="form-hint">Die Person erhält eine Einladung und wird erst Mitglied, wenn sie annimmt. Den Status siehst du unter „Einladungen → Gesendet“.</p>
+        <p class="form-hint">Die E-Mail-Adresse muss bereits registriert sein. Die Person wird direkt als Projektmitglied hinzugefügt.</p>
       </div>
       <div class="modal-foot no-border">
         <button class="btn btn-lg" type="button" data-close>Abbrechen</button>
-        <button class="btn btn-primary btn-lg" type="submit" id="inviteSubmit">Einladung senden</button>
+        <button class="btn btn-primary btn-lg" type="submit" id="inviteSubmit">Mitglied hinzufügen</button>
       </div>
     </form>
   </div>

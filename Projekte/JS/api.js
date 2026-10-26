@@ -299,31 +299,22 @@
       }
     },
 
-    // BACKEND: GET /invitations?status=AUSSTEHEND -> [...]  (nur Anzahl fuer Badge im Menue)
+    // Kein Invitation-Backend: direkte Mitgliedschaft, kein Badge-Request.
     async getOpenInvitationCount() {
-      if (USE_MOCK) return mock.getOpenInvitationCount();
-      const raw = await request('GET', '/invitations/received?status=AUSSTEHEND');
-      const list = Array.isArray(raw) ? raw : (raw.invitations || raw.received || []);
-      return list.length;
+      return 0;
     },
 
-    // KI-Log Nr. 40 | BACKEND: GET /invitations/overview -> { received:[...], sent:[...] }
+    // Kompatibilität mit der alten Einladungsansicht, ohne Backend-Aufruf.
     async getInvitationOverview() {
-      if (USE_MOCK) return mock.getInvitationOverview();
-      const raw = await request('GET', '/invitations/overview');
-      return { received: raw.received || raw.incoming || [], sent: raw.sent || raw.outgoing || [] };
+      return { received: [], sent: [] };
     },
 
-    // BACKEND: POST /invitations/{invitationId}/accept -> 200 Projektmitgliedschaft
     acceptInvitation(invitationId) {
-      if (USE_MOCK) return mock.acceptInvitation(invitationId);
-      return request('POST', '/invitations/' + encodeURIComponent(invitationId) + '/accept');
+      return Promise.reject(new ApiError(400, 'Mitglieder werden direkt zum Projekt hinzugefügt.'));
     },
 
-    // BACKEND: DELETE /invitations/{invitationId} -> 204 (ignorieren)
     ignoreInvitation(invitationId) {
-      if (USE_MOCK) return mock.ignoreInvitation(invitationId);
-      return request('DELETE', '/invitations/' + encodeURIComponent(invitationId));
+      return Promise.reject(new ApiError(400, 'Es gibt keine ausstehenden Einladungen.'));
     },
 
     /* ---------- Projekte ---------- */
@@ -385,7 +376,7 @@
       return normalizeProject(raw);
     },
 
-    /* ---------- Mitglieder & Einladungen ---------- */
+    /* ---------- Mitglieder ---------- */
 
     // BACKEND: PATCH /projects/{projectId}/members/{userId}  Body { role } -> 200
     // 409, wenn dadurch keine Projektleitung mehr uebrig waere
@@ -402,30 +393,16 @@
       return request('DELETE', '/projects/' + encodeURIComponent(projectId) + '/members/' + encodeURIComponent(userId));
     },
 
-    // BACKEND: GET /projects/{projectId}/invitations?status=AUSSTEHEND
-    // -> [{ id, email, role, sentAt:'YYYY-MM-DD', status }]
-    getInvitations(projectId) {
-      if (USE_MOCK) return mock.getInvitations(projectId);
-      return request('GET', '/projects/' + encodeURIComponent(projectId) + '/invitations?status=AUSSTEHEND');
-    },
-
-    // KI-Log Nr. 58: Das Backend verwaltet Einladungen aktuell über die
-    // Mitglieder-Schnittstelle und erwartet ProjectRole-Enumwerte.
+    // Direkte Mitgliedschaft, kein Einladungsprozess.
     // BACKEND: POST /projects/{projectId}/members
     // JSON-Body { email, role } -> 200 Mitgliedschaft; Token nur im Header.
-    inviteMember(projectId, data) {
+    addMember(projectId, data) {
       const payload = {
         email: String(data.email || '').trim().toLowerCase(),
         role: data.role === 'PROJEKTLEITUNG' ? 'PROJECT_LEADER' : 'MEMBER'
       };
-      if (USE_MOCK) return mock.inviteMember(projectId, data);
+      if (USE_MOCK) return mock.addMember(projectId, data);
       return request('POST', '/projects/' + encodeURIComponent(projectId) + '/members', payload);
-    },
-
-    // BACKEND: DELETE /projects/{projectId}/invitations/{invitationId} -> 204 (Zurueckziehen)
-    withdrawInvitation(projectId, invitationId) {
-      if (USE_MOCK) return mock.withdrawInvitation(projectId, invitationId);
-      return request('DELETE', '/projects/' + encodeURIComponent(projectId) + '/invitations/' + encodeURIComponent(invitationId));
     },
 
     /* ---------- Tasks (Meeting / Langes To-Do) ---------- */
@@ -885,7 +862,7 @@
         return delay(p.invitations.filter(i => i.status === 'AUSSTEHEND'));
       },
 
-      inviteMember(projectId, data) {
+      addMember(projectId, data) {
         const db = load();
         const p = project(db, projectId);
         if (!p) return fail(404);
@@ -893,12 +870,11 @@
         const email = String(data.email || '').trim().toLowerCase();
         if (!validEmail(email)) return fail(400, 'Bitte eine gültige E-Mail-Adresse eingeben.');
         const existing = db.users.find(u => u.email === email);
-        if (existing && p.members.some(m => m.userId === existing.id)) return fail(409, 'Diese Person ist bereits Mitglied.');
-        if (p.invitations.some(i => i.email === email && i.status === 'AUSSTEHEND')) return fail(409, 'Diese Person ist bereits eingeladen.');
-        const invitation = { id: newId(db, 'i'), email, role: data.role === 'PROJEKTLEITUNG' ? 'PROJEKTLEITUNG' : 'TEAMMITGLIED', sentAt: today(), status: 'AUSSTEHEND' };
-        p.invitations.push(invitation);
+        if (!existing) return fail(404, 'Diese E-Mail-Adresse ist noch nicht registriert.');
+        if (p.members.some(m => m.userId === existing.id)) return fail(400, 'Diese Person ist bereits Mitglied.');
+        p.members.push({ userId: existing.id, role: data.role === 'PROJEKTLEITUNG' ? 'PROJEKTLEITUNG' : 'TEAMMITGLIED' });
         save(db);
-        return delay(invitation);
+        return delay({ message: 'member added' });
       },
 
       withdrawInvitation(projectId, invitationId) {
