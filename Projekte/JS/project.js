@@ -442,13 +442,12 @@
   /* ================= Mitglieder (S. 7) ================= */
 
   async function openMembers() {
-    renderMemberItems();
-    ui.openModal('membersModal');
     try {
       state.project.members = await api.getMembers(projectId);
       renderMemberItems();
+      ui.openModal('membersModal');
     } catch (error) {
-      $('#memberItems').innerHTML = `<p class="empty">${esc(error.message)}</p>`;
+      ui.toast(error.message, true);
     }
   }
 
@@ -516,17 +515,19 @@
     });
   }
 
-  /* ================= Mitglied direkt hinzufügen ================= */
+  /* ================= Mitglied hinzufügen (S. 8) ================= */
 
-  function openAddMember() {
-    const form = $('#addMemberForm');
+  function openInvite() {
+    if (!state.isLead) { ui.toast('Nur die Projektleitung darf Mitglieder hinzufügen.', true); return; }
+    const form = $('#inviteForm');
     form.reset();
     ui.clearFormError(form);
-    ui.openModal('addMemberModal');
+    ui.openModal('inviteModal');
   }
 
-  async function submitMember(event) {
+  async function addMember(event) {
     event.preventDefault();
+    if (!state.isLead) { ui.toast('Nur die Projektleitung darf Mitglieder hinzufügen.', true); return; }
     const form = event.currentTarget;
     ui.clearFormError(form);
     const email = form.elements.email.value.trim().toLowerCase();
@@ -536,13 +537,13 @@
       form.elements.email.focus();
       return;
     }
-    await ui.withBusy($('#addMemberSubmit'), async () => {
+    await ui.withBusy($('#inviteSubmit'), async () => {
       try {
         // BACKEND: POST /projects/{projectId}/members; Token liegt nur im Header.
         await api.addMember(projectId, { email, role });
-        ui.closeModal('addMemberModal');
+        ui.closeModal('inviteModal');
         ui.toast(`${email} wurde als Mitglied hinzugefügt.`);
-        await loadData();
+        state.project.members = await api.getMembers(projectId);
         render();
         renderMemberItems();
       } catch (error) {
@@ -606,7 +607,7 @@
       }
     });
     state.newSubtasks = ui.subtaskEditor($('#newSubtasks'), {
-      members: state.project.members, subtasks: [], currentUserId: state.me.id, allowAssignment: false,
+      members: state.project.members, subtasks: [], currentUserId: state.me.id,
       getAssignableIds: () => state.picker ? state.picker.getValue().participantIds : []
     });
     setTaskType('MEETING');
@@ -618,9 +619,8 @@
     state.newTaskType = type;
     document.querySelectorAll('#newTaskForm [data-type]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.type === type)));
     const isLong = type === 'LANGES_TODO';
-    $('#taskStartLabel').textContent = 'Start *';
+    $('#taskStartLabel').textContent = isLong ? 'Start' : 'Start *';
     $('#taskEndLabel').textContent = isLong ? 'Frist *' : 'Ende *';
-    $('#taskPriority').closest('.field').hidden = !isLong;
     $('#availabilityBox').hidden = isLong;
     $('#newSubtaskSection').hidden = !isLong;
   }
@@ -678,7 +678,7 @@
     let error = null;
     if (!title) error = 'Bitte einen Titel eingeben.';
     else if (times.error) error = times.error;
-    else if (!times.start) error = 'Bitte einen Start angeben.';
+    else if (type === 'MEETING' && !times.start) error = 'Bitte einen Start angeben.';
     else if (!times.end) error = type === 'MEETING' ? 'Bitte ein Ende angeben.' : 'Bitte eine Frist angeben.';
     else if (times.start && times.end <= times.start) error = 'Ende / Frist muss nach dem Start liegen.';
     else if (state.picker.isEmpty()) error = 'Bitte mindestens einen Teilnehmer auswählen.';
@@ -801,8 +801,8 @@
     });
 
     $('#openMembersButton').addEventListener('click', openMembers);
-    $('#openAddMemberButton').addEventListener('click', openAddMember);
-    $('#addMemberForm').addEventListener('submit', submitMember);
+    $('#openInviteButton').addEventListener('click', openInvite);
+    $('#inviteForm').addEventListener('submit', addMember);
     $('#roleForm').addEventListener('submit', saveRole);
     $('#editProjectButton').addEventListener('click', openEditProject);
     $('#editProjectForm').addEventListener('submit', saveProject);

@@ -119,9 +119,6 @@
         'Project not found': 'Projekt nicht gefunden. Bitte lade die Projektübersicht neu.',
         'invalid token': 'Deine Anmeldung ist abgelaufen. Bitte melde dich erneut an.',
         'no permission': 'Dafür fehlt dir die Berechtigung.',
-        'user not found': 'Diese E-Mail-Adresse ist noch nicht registriert.',
-        'user is already member': 'Diese Person ist bereits Mitglied dieses Projekts.',
-        'end before start': 'Das Ende muss nach dem Start liegen.',
         'User is no member of the project': 'Du bist kein Mitglied dieses Projekts.',
         'authenticated user could not be found': 'Dein Benutzerkonto konnte nicht gefunden werden.',
         'User not found': 'Dein Benutzerkonto konnte nicht gefunden werden.'
@@ -204,7 +201,7 @@
       end: t.end || t.endAt || t.dueAt || t.dueDate || null,
       priority: ({ HIGH: 'HOCH', MEDIUM: 'MITTEL', LOW: 'NIEDRIG' })[priorityRaw] || priorityRaw,
       allParticipants: !!t.allParticipants,
-      participantIds: (t.participantIds || (Array.isArray(t.participants) ? t.participants.map(x => typeof x === 'object' ? (x.userId ?? x.id) : x) : [])).map(String),
+      participantIds: t.participantIds || (Array.isArray(t.participants) ? t.participants.map(x => typeof x === 'string' ? x : String(x.userId ?? x.id ?? '')) : []),
       done: !!(t.done ?? t.completed),
       doneBy: t.doneBy || null,
       doneAt: t.doneAt || null,
@@ -213,7 +210,7 @@
         id: String(sub.id ?? sub.subtaskId ?? ''),
         title: sub.title || sub.name || '',
         description: sub.description || '',
-        assigneeId: (sub.assigneeId ?? sub.userId ?? sub.assignedUserId) == null ? null : String(sub.assigneeId ?? sub.userId ?? sub.assignedUserId),
+        assigneeId: sub.assigneeId || sub.userId || sub.assignedUserId || null,
         done: !!(sub.done ?? sub.completed),
         schedule: sub.schedule || null
       }))
@@ -225,8 +222,7 @@
     const participants = Array.isArray(meeting.participants) ? meeting.participants : [];
     return normalizeTask({
       ...meeting,
-      id: 'meeting:' + (meeting.meetingId ?? meeting.id),
-      resourceId: String(meeting.meetingId ?? meeting.id),
+      id: meeting.meetingId ?? meeting.id,
       projectId: meeting.projectId,
       type: 'MEETING',
       start: meeting.startDateTime ?? meeting.start,
@@ -243,8 +239,7 @@
     const subtasks = Array.isArray(todo.subtasks) ? todo.subtasks : [];
     return normalizeTask({
       ...todo,
-      id: 'long-todo:' + (todo.longToDoId ?? todo.id),
-      resourceId: String(todo.longToDoId ?? todo.id),
+      id: todo.longToDoId ?? todo.id,
       projectId: todo.projectId,
       type: 'LANGES_TODO',
       start: todo.startDateTime ?? todo.start,
@@ -257,12 +252,6 @@
         assigneeId: subtask.assigneeId ?? null
       }))
     });
-  }
-
-  function taskResource(taskId) {
-    const match = /^(meeting|long-todo):(\d+)$/.exec(String(taskId));
-    if (!match) throw new ApiError(400, 'Ungültige Aufgaben-ID.');
-    return (match[1] === 'meeting' ? '/meetings/' : '/long-todos/') + match[2];
   }
 
   /* ==================================================================
@@ -310,6 +299,24 @@
       }
     },
 
+    // Kein Invitation-Backend: direkte Mitgliedschaft, kein Badge-Request.
+    async getOpenInvitationCount() {
+      return 0;
+    },
+
+    // Kompatibilität mit der alten Einladungsansicht, ohne Backend-Aufruf.
+    async getInvitationOverview() {
+      return { received: [], sent: [] };
+    },
+
+    acceptInvitation(invitationId) {
+      return Promise.reject(new ApiError(400, 'Mitglieder werden direkt zum Projekt hinzugefügt.'));
+    },
+
+    ignoreInvitation(invitationId) {
+      return Promise.reject(new ApiError(400, 'Es gibt keine ausstehenden Einladungen.'));
+    },
+
     /* ---------- Projekte ---------- */
 
     // BACKEND: GET /projects
@@ -322,7 +329,9 @@
       return list.map(normalizeProject);
     },
 
-    // API-Design 19.10.2026: POST /projects { name, description } -> 200 { projectId }.
+    // KI-Log Nr. 55: Das Backend validiert je nach Version "title" oder "name".
+    // Beide Felder enthalten denselben UI-Wert; Token/Header bleiben zentral.
+    // BACKEND: POST /projects  Body { title, name, description } -> 201 { id|projectId }
     // Ersteller wird im Backend automatisch PROJEKTLEITUNG.
     async createProject(data) {
       if (USE_MOCK) return mock.createProject(data);
@@ -360,24 +369,22 @@
       }));
     },
 
-    // PUT: Ein Attribut pro Request gemäß API-Design.
+    // BACKEND: PATCH /projects/{projectId}  Body { title, description, status } -> 200 Projekt
     async updateProject(projectId, data) {
       if (USE_MOCK) return mock.updateProject(projectId, data);
-      for (const [attribute, value] of Object.entries(data)) {
-        const newValue = attribute === 'status' ? (value === 'ABGESCHLOSSEN' ? 'COMPLETED' : 'ACTIVE') : value;
-        await request('PUT', '/projects/' + encodeURIComponent(projectId), { update: { attribute, newValue } });
-      }
-      return api.getProject(projectId);
+      const raw = await request('PATCH', '/projects/' + encodeURIComponent(projectId), data);
+      return normalizeProject(raw);
     },
 
-    /* ---------- Direkte Projektmitgliedschaft ---------- */
+    /* ---------- Mitglieder ---------- */
 
-    // PUT /projects/{projectId}/members/{userId}; letzter PL -> 400.
+    // BACKEND: PATCH /projects/{projectId}/members/{userId}  Body { role } -> 200
+    // 409, wenn dadurch keine Projektleitung mehr uebrig waere
     updateMemberRole(projectId, userId, role) {
       if (USE_MOCK) return mock.updateMemberRole(projectId, userId, role);
-      const apiRole = role === 'PROJEKTLEITUNG' ? 'PROJECT_LEADER' : 'MEMBER';
-      return request('PUT', '/projects/' + encodeURIComponent(projectId) + '/members/' + encodeURIComponent(userId),
-        { update: { attribute: 'role', newValue: apiRole } });
+      // BACKEND: Mia-Projekt nutzt PL/member als Rollenwerte; bei abweichendem Enum nur diese Abbildung ändern.
+      const apiRole = role === 'PROJEKTLEITUNG' ? 'PL' : 'member';
+      return request('PATCH', '/projects/' + encodeURIComponent(projectId) + '/members/' + encodeURIComponent(userId), { role: apiRole });
     },
 
     // BACKEND: DELETE /projects/{projectId}/members/{userId} -> 204
@@ -386,6 +393,7 @@
       return request('DELETE', '/projects/' + encodeURIComponent(projectId) + '/members/' + encodeURIComponent(userId));
     },
 
+    // Direkte Mitgliedschaft, kein Einladungsprozess.
     // BACKEND: POST /projects/{projectId}/members
     // JSON-Body { email, role } -> 200 Mitgliedschaft; Token nur im Header.
     addMember(projectId, data) {
@@ -417,44 +425,16 @@
       return meetings.concat(todos);
     },
 
-    async getMeeting(meetingId) {
-      return normalizeMeeting(await request('GET', '/meetings/' + encodeURIComponent(meetingId)));
-    },
-
-    async getLongTodo(longToDoId) {
-      return normalizeLongTodo(await request('GET', '/long-todos/' + encodeURIComponent(longToDoId)));
-    },
-
-    createSubtask(longToDoId, data) {
-      return request('POST', '/long-todos/' + encodeURIComponent(longToDoId) + '/subtasks',
-        { title: data.title, description: data.description || '' });
-    },
-
-    // API-Design 19.10.2026: getrennte Ressourcen, keine allgemeine Task-API.
+    // KI-Log Nr. 43: Meeting und langes To-do verwenden getrennte JSON-Payloads.
+    // BACKEND: POST https://plan-b-api-6486e78ed17c.herokuapp.com/projects/{projectId}/tasks
+    // Meeting: { type, title, description, start, end, priority,
+    //            allParticipants, participantIds }
+    // Langes To-do: { type, title, description, start, end, priority,
+    //                 allParticipants, participantIds, subtasks }
     async createTask(projectId, data) {
       if (USE_MOCK) return mock.createTask(projectId, data);
-      const ids = data.allParticipants
-        ? (await api.getMembers(projectId)).map(member => Number(member.userId))
-        : (data.participantIds || []).map(Number);
-      const body = {
-        title: String(data.title || '').trim(),
-        description: data.description || '',
-        startDateTime: data.start,
-        endDateTime: data.end
-      };
-      if (!body.startDateTime) throw new ApiError(400, 'Bitte einen Startzeitpunkt eingeben.');
-      if (data.type === 'MEETING') {
-        const result = await request('POST', '/projects/' + encodeURIComponent(projectId) + '/meetings',
-          { ...body, participantIds: ids });
-        return normalizeMeeting({ ...body, projectId, meetingId: result.meetingId, participantIds: ids });
-      }
-      const priority = value => ({ HOCH: 'HIGH', MITTEL: 'MEDIUM', NIEDRIG: 'LOW' })[value] || value || 'MEDIUM';
-      const subtasks = (data.subtasks || []).map(sub => ({
-        title: sub.title, description: sub.description || '', priority: priority(sub.priority)
-      }));
-      const result = await request('POST', '/projects/' + encodeURIComponent(projectId) + '/long-todos',
-        { ...body, priority: priority(data.priority), assignedMemberIds: ids, subtasks });
-      return normalizeLongTodo({ ...body, projectId, longToDoId: result.longToDoId, assignedMemberIds: ids, subtasks });
+      const raw = await request('POST', '/projects/' + encodeURIComponent(projectId) + '/tasks', data);
+      return normalizeTask((raw && raw.task) || raw);
     },
 
     // KI-Log Nr. 43: Meeting-Payload ohne Teilaufgaben.
@@ -486,53 +466,54 @@
       });
     },
 
-    // Vollständige Bearbeitung benötigt noch Backend-PUT-Funktionen je Ressource.
+    // BACKEND: PUT /tasks/{taskId}  Body = kompletter Task inkl. subtasks -> 200 Task
+    // Neue Teilaufgaben haben id = null, das Backend vergibt die IDs.
     async updateTask(taskId, data) {
       if (USE_MOCK) return mock.updateTask(taskId, data);
-      throw new ApiError(501, 'Die vollständige Aufgabenbearbeitung ist im Backend noch nicht implementiert.');
+      const raw = await request('PUT', '/tasks/' + encodeURIComponent(taskId), data);
+      return normalizeTask((raw && raw.task) || raw);
     },
 
-    // DELETE /meetings/{id} oder /long-todos/{id}; Backend noch zu ergänzen.
+    // BACKEND: DELETE /tasks/{taskId} -> 204
     deleteTask(taskId) {
       if (USE_MOCK) return mock.deleteTask(taskId);
-      return request('DELETE', taskResource(taskId));
+      return request('DELETE', '/tasks/' + encodeURIComponent(taskId));
     },
 
-    // PUT auf die getrennte Ressource; Backend-Statusfunktion noch zu ergänzen.
+    // BACKEND: PATCH /tasks/{taskId}  Body { done } -> 200 Task  (nur Meetings, nur Teilnehmer)
     async setTaskDone(taskId, done) {
       if (USE_MOCK) return mock.setTaskDone(taskId, done);
-      const path = taskResource(taskId);
-      return request('PUT', path + (path.startsWith('/long-todos/') ? '/done' : ''),
-        path.startsWith('/long-todos/') ? { done: !!done } : { update: { attribute: 'done', newValue: !!done } });
+      const raw = await request('PATCH', '/tasks/' + encodeURIComponent(taskId), { done });
+      return normalizeTask((raw && raw.task) || raw);
     },
 
     /* ---------- Teilaufgaben ---------- */
 
-    // US2-Übernahme ist noch kein abgestimmter API-Vertrag.
+    // BACKEND: POST /tasks/{taskId}/subtasks/{subtaskId}/claim -> 200 Teilaufgabe
+    // 409 Body { assigneeName }, wenn jemand anderes schneller war (Wireframe "Nicht uebernommen")
     claimSubtask(taskId, subtaskId) {
       if (USE_MOCK) return mock.claimSubtask(taskId, subtaskId);
-      throw new ApiError(501, 'Die Übernahme von Unteraufgaben ist im aktuellen API-Design noch nicht festgelegt.');
+      return request('POST', '/tasks/' + encodeURIComponent(taskId) + '/subtasks/' + encodeURIComponent(subtaskId) + '/claim');
     },
 
-    // PUT /long-todos/{id}/subtasks/{subtaskId}, ein Attribut pro Request.
+    // BACKEND: PATCH /tasks/{taskId}/subtasks/{subtaskId}  Body { done } -> 200 Task
     // Backend setzt das lange To-Do automatisch auf erledigt, wenn alle Teilaufgaben erledigt sind.
     async setSubtaskDone(taskId, subtaskId, done) {
       if (USE_MOCK) return mock.setSubtaskDone(taskId, subtaskId, done);
-      const raw = await request('PUT', taskResource(taskId) + '/subtasks/' + encodeURIComponent(subtaskId),
-        { update: { attribute: 'done', newValue: !!done } });
+      const raw = await request('PATCH', '/tasks/' + encodeURIComponent(taskId) + '/subtasks/' + encodeURIComponent(subtaskId), { done });
       return raw && raw.task ? normalizeTask(raw.task) : (raw || { id: subtaskId, done });
     },
 
-    // Kalenderplanung ist noch nicht im Backend verfügbar.
+    // KI-Log Nr. 39 | BACKEND: POST /tasks/{taskId}/subtasks/{subtaskId}/schedule  Body { date, from, to } -> 200 Teilaufgabe
     scheduleSubtask(taskId, subtaskId, slot) {
       if (USE_MOCK) return mock.scheduleSubtask(taskId, subtaskId, slot);
-      throw new ApiError(501, 'Persönliche Zeitfenster sind im Backend noch nicht verfügbar.');
+      return request('POST', '/tasks/' + encodeURIComponent(taskId) + '/subtasks/' + encodeURIComponent(subtaskId) + '/schedule', slot);
     },
 
     // KI-Log Nr. 39 | BACKEND: GET /availability/free-slots?userId=...&until=... -> [{ date, from, to }]
     getFreeSlots(userId, until) {
       if (USE_MOCK) return mock.getFreeSlots(userId, until);
-      throw new ApiError(501, 'Freie Kalenderzeitfenster sind im Backend noch nicht verfügbar.');
+      return request('GET', '/availability/free-slots?userId=' + encodeURIComponent(userId) + '&until=' + encodeURIComponent(until));
     },
 
     /* ---------- Verfuegbarkeit (Kalender) ---------- */
@@ -541,7 +522,7 @@
     // -> [{ userId, name, free, busyFrom, busyTo }]  (Daten aus dem externen Kalender)
     checkAvailability(data) {
       if (USE_MOCK) return mock.checkAvailability(data);
-      throw new ApiError(501, 'Die Kalender-Verfügbarkeitsprüfung ist im API-Design noch offen.');
+      return request('POST', '/availability', data);
     },
 
     // Nur fuer Tests: Testdaten zuruecksetzen
@@ -563,6 +544,15 @@
     return {
       meId: 'u1',
       nextId: 1000,
+      openInvitationCount: 2,
+      incomingInvitations: [
+        { id: 'inc1', projectId: '4', inviterId: 'u4', role: 'TEAMMITGLIED', sentAt: '2026-10-14' },
+        { id: 'inc2', projectId: '5', inviterId: 'u3', role: 'PROJEKTLEITUNG', sentAt: '2026-10-13' }
+      ],
+      sentHistory: [
+        { id: 'sent1', email: 'hicham@test.de', name: 'Hicham W.', projectId: '1', role: 'TEAMMITGLIED', sentAt: '2026-10-01', status: 'ANGENOMMEN' },
+        { id: 'sent2', email: 'johannes@test.de', name: 'Johannes B.', projectId: '1', role: 'TEAMMITGLIED', sentAt: '2026-10-01', status: 'ANGENOMMEN' }
+      ],
       users: [
         { id: 'u1', name: 'Mia M.', email: 'mia@test.de' },
         { id: 'u2', name: 'Hicham W.', email: 'hicham@test.de' },
@@ -583,7 +573,8 @@
             { userId: 'u1', role: 'PROJEKTLEITUNG' },
             { userId: 'u2', role: 'TEAMMITGLIED' },
             { userId: 'u3', role: 'TEAMMITGLIED' }
-          ]
+          ],
+          invitations: [{ id: 'i1', email: 'lena@test.de', role: 'TEAMMITGLIED', sentAt: '2026-10-14', status: 'AUSSTEHEND' }]
         },
         {
           id: '2', title: 'Projekt 2', status: 'AKTIV', updatedAt: '2026-10-13',
@@ -593,7 +584,8 @@
             { userId: 'u1', role: 'TEAMMITGLIED' },
             { userId: 'u3', role: 'TEAMMITGLIED' },
             { userId: 'u4', role: 'TEAMMITGLIED' }
-          ]
+          ],
+          invitations: []
         },
         {
           id: '3', title: 'Projekt 3', status: 'ABGESCHLOSSEN', updatedAt: '2026-09-30',
@@ -601,10 +593,11 @@
           members: [
             { userId: 'u3', role: 'PROJEKTLEITUNG' },
             { userId: 'u1', role: 'TEAMMITGLIED' }
-          ]
+          ],
+          invitations: []
         },
-        { id: '4', title: 'Projekt 4 – Messestand planen', status: 'AKTIV', updatedAt: '2026-10-14', description: 'Messestand planen.', members: [{ userId: 'u4', role: 'PROJEKTLEITUNG' }] },
-        { id: '5', title: 'Projekt 5 – Semesterplanung', status: 'AKTIV', updatedAt: '2026-10-13', description: 'Semesterplanung.', members: [{ userId: 'u3', role: 'PROJEKTLEITUNG' }] }
+        { id: '4', title: 'Projekt 4 – Messestand planen', status: 'AKTIV', updatedAt: '2026-10-14', description: 'Messestand planen.', members: [{ userId: 'u4', role: 'PROJEKTLEITUNG' }], invitations: [] },
+        { id: '5', title: 'Projekt 5 – Semesterplanung', status: 'AKTIV', updatedAt: '2026-10-13', description: 'Semesterplanung.', members: [{ userId: 'u3', role: 'PROJEKTLEITUNG' }], invitations: [] }
       ],
       tasks: [
         // ----- Projekt 1 -----
@@ -617,7 +610,7 @@
           done: false, doneBy: null, doneAt: null,
           subtasks: [
             sub('s1', 'Startseite zeichnen', 'u1', false, 'Startseite mit Projekten und To-Dos skizzieren.'),
-            sub('s2', 'Pop-ups ergänzen', 'u1', false, 'Dialoge für Anlegen, Bearbeiten und Mitglieder ergänzen.'),
+            sub('s2', 'Pop-ups ergänzen', 'u1', false, 'Dialoge für Anlegen, Bearbeiten und Einladen ergänzen.'),
             sub('s3', 'Login-Seite entwerfen', 'u3', true, 'Login- und Registrierungsseite entwerfen.')
           ] },
         { id: 't3', projectId: '1', type: 'LANGES_TODO', title: 'Datenbankschema', description: 'Tabellen und Beziehungen für Projekte und Tasks festlegen.',
@@ -737,6 +730,48 @@
 
     return {
       getCurrentUser() { const db = load(); return delay(user(db, db.meId)); },
+      getOpenInvitationCount() { const db = load(); return delay(db.incomingInvitations.length); },
+      getInvitationOverview() {
+        const db = load();
+        const received = db.incomingInvitations.map(inv => {
+          const p = project(db, inv.projectId);
+          return { ...inv, projectTitle: p ? p.title : 'Projekt', inviterName: user(db, inv.inviterId)?.name || 'Unbekannt' };
+        });
+        const sent = db.sentHistory.slice();
+        db.projects.forEach(p => {
+          if (!isLead(db, p)) return;
+          p.invitations.forEach(inv => sent.push({
+            ...inv,
+            projectId: p.id,
+            projectTitle: p.title,
+            name: (db.users.find(u => u.email === inv.email) || {}).name || '',
+            status: inv.status
+          }));
+        });
+        sent.forEach(inv => { if (!inv.projectTitle) inv.projectTitle = project(db, inv.projectId)?.title || 'Projekt'; });
+        return delay({ received, sent });
+      },
+      acceptInvitation(invitationId) {
+        const db = load();
+        const index = db.incomingInvitations.findIndex(i => i.id === invitationId);
+        if (index < 0) return fail(404, 'Einladung nicht gefunden.');
+        const inv = db.incomingInvitations[index];
+        const p = project(db, inv.projectId);
+        if (!p) return fail(404, 'Projekt nicht gefunden.');
+        if (!p.members.some(m => m.userId === db.meId)) p.members.push({ userId: db.meId, role: inv.role });
+        p.updatedAt = today();
+        db.incomingInvitations.splice(index, 1);
+        save(db);
+        return delay({ projectId: p.id, role: inv.role });
+      },
+      ignoreInvitation(invitationId) {
+        const db = load();
+        const before = db.incomingInvitations.length;
+        db.incomingInvitations = db.incomingInvitations.filter(i => i.id !== invitationId);
+        if (before === db.incomingInvitations.length) return fail(404, 'Einladung nicht gefunden.');
+        save(db);
+        return delay(null);
+      },
 
       getProjects() {
         const db = load();
@@ -752,7 +787,7 @@
         if (!title) return fail(400, 'Bitte einen Titel eingeben.');
         const id = String(db.nextId += 1);
         db.projects.push({ id, title, description: String(data.description || '').trim(), status: 'AKTIV', updatedAt: today(),
-          members: [{ userId: db.meId, role: 'PROJEKTLEITUNG' }] });
+          members: [{ userId: db.meId, role: 'PROJEKTLEITUNG' }], invitations: [] });
         save(db);
         return delay({ id });
       },
@@ -819,20 +854,37 @@
         return delay(null);
       },
 
+      getInvitations(projectId) {
+        const db = load();
+        const p = project(db, projectId);
+        if (!p) return fail(404);
+        if (!isLead(db, p)) return fail(403);
+        return delay(p.invitations.filter(i => i.status === 'AUSSTEHEND'));
+      },
+
       addMember(projectId, data) {
         const db = load();
         const p = project(db, projectId);
         if (!p) return fail(404);
-        if (!isLead(db, p)) return fail(403, 'Nur die Projektleitung kann Mitglieder hinzufügen.');
+        if (!isLead(db, p)) return fail(403, 'Nur die Projektleitung kann einladen.');
         const email = String(data.email || '').trim().toLowerCase();
         if (!validEmail(email)) return fail(400, 'Bitte eine gültige E-Mail-Adresse eingeben.');
         const existing = db.users.find(u => u.email === email);
         if (!existing) return fail(404, 'Diese E-Mail-Adresse ist noch nicht registriert.');
         if (p.members.some(m => m.userId === existing.id)) return fail(400, 'Diese Person ist bereits Mitglied.');
-        const membership = { userId: existing.id, role: data.role === 'PROJEKTLEITUNG' ? 'PROJEKTLEITUNG' : 'TEAMMITGLIED' };
-        p.members.push(membership);
+        p.members.push({ userId: existing.id, role: data.role === 'PROJEKTLEITUNG' ? 'PROJEKTLEITUNG' : 'TEAMMITGLIED' });
         save(db);
-        return delay(membership);
+        return delay({ message: 'member added' });
+      },
+
+      withdrawInvitation(projectId, invitationId) {
+        const db = load();
+        const p = project(db, projectId);
+        if (!p) return fail(404);
+        if (!isLead(db, p)) return fail(403);
+        p.invitations = p.invitations.filter(i => i.id !== invitationId);
+        save(db);
+        return delay(null);
       },
 
       getTasks(projectId) {
