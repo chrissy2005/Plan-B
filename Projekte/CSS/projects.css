@@ -131,8 +131,8 @@ input[type="checkbox"]:disabled { cursor: not-allowed; opacity: .55; }
 .strike { text-decoration: line-through; }
 
 /* KI-Log Nr. 38 | ---------- Modal ---------- */
-.modal-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px; overflow-y: auto; background: rgba(0, 0, 0, .35); }
-.modal { display: flex; flex-direction: column; width: 100%; max-width: 600px; max-height: calc(100vh - 40px); border: 2px solid var(--black); border-radius: 8px; background: #fff; }
+.modal-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; padding: 20px; overflow-y: auto; background: rgba(0, 0, 0, .35); }
+.modal { display: flex; flex-direction: column; min-width: 0; width: 100%; max-width: 600px; max-height: calc(100vh - 40px); border: 2px solid var(--black); border-radius: 8px; background: #fff; }
 .modal-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 22px 26px; border-bottom: 1px solid #bdbdbd; }
 .modal-head h2 { font-size: 20px; }
 .modal-close { padding: 4px; border: 0; background: none; font-size: 26px; line-height: 1; cursor: pointer; }
@@ -184,7 +184,7 @@ input[type="checkbox"]:disabled { cursor: not-allowed; opacity: .55; }
 .member-item.pending { border-style: dashed; }
 .member-item .info { flex: 1; min-width: 0; }
 .member-item strong { display: block; font-size: 16px; font-weight: 600; }
-.member-item small { color: var(--muted); font-size: 14px; }
+.member-item small { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
 .subheading { margin: 18px 0 10px; font-size: 15px; font-weight: 600; color: var(--muted); }
 .empty { margin: 6px 0 12px; color: var(--muted); font-size: 14px; }
 
@@ -224,6 +224,8 @@ input[type="checkbox"]:disabled { cursor: not-allowed; opacity: .55; }
   .grid-2 { grid-template-columns: 1fr; }
   .head-actions { flex-wrap: wrap; }
   .modal-head, .modal-body, .modal-foot { padding-left: 18px; padding-right: 18px; }
+  .modal-foot { flex-wrap: wrap; }
+  .modal-foot > .btn { flex: 1 1 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
