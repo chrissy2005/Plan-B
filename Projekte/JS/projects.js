@@ -37,14 +37,18 @@
       const projects = await api.getProjects();
       renderProjects(projects);
     } catch (error) {
-      const message = error.message;
+      // KI-Log Nr. 57: GET /projects ist im aktuellen Backend noch nicht vorhanden.
+      // Diese Meldung trennt fehlende GET-Unterstützung von einem echten Rollenfehler.
+      const message = error.status === 403 || error.status === 404
+        ? 'Die Projektübersicht kann noch nicht geladen werden, weil GET /projects im Backend noch fehlt.'
+        : error.message;
       list.innerHTML = `<p class="page-message" role="alert">${esc(message)}</p>`;
     }
   }
 
   function renderProjects(projects) {
     if (!projects.length) {
-      list.innerHTML = '<p class="empty">Du bist noch in keinem Projekt. Lege ein Projekt an oder lasse dich von einer Projektleitung als Mitglied hinzufügen.</p>';
+      list.innerHTML = '<p class="empty">Du bist noch in keinem Projekt. Lege ein neues Projekt an oder nimm eine Einladung an.</p>';
       return;
     }
     list.innerHTML = projects.map(p => {
@@ -75,7 +79,7 @@
     await ui.withBusy($('#createProjectSubmit'), async () => {
       try {
         // KI-Log Nr. 57: Nach dem POST die Projektansicht öffnen.
-        // project.js lädt Details, Mitglieder, Meetings und lange To-dos getrennt.
+        // project.js sendet dort GET /projects/{projectId} und GET /projects/{projectId}/tasks.
         // BACKEND: POST /projects -> { id|projectId, message }
         const created = await api.createProject({ title, description });
         window.location.href = 'project.html?id=' + encodeURIComponent(created.id);
