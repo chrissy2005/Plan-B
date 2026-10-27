@@ -23,7 +23,7 @@
   }
 
   /* ---------- Beschriftungen ---------- */
-  const PRIO = { HOCH: 'Hoch', MITTEL: 'Mittel', NIEDRIG: 'Niedrig' };
+  const PRIO = { HIGH: 'Hoch', MEDIUM: 'Mittel', LOW: 'Niedrig' };
   const ROLE = { PROJEKTLEITUNG: 'Projektleitung', TEAMMITGLIED: 'Teammitglied', PL: 'Projektleitung', member: 'Teammitglied', MEMBER: 'Teammitglied' };
   const TYPE = { MEETING: 'Meeting', LANGES_TODO: 'Langes To-Do' };
   const STATUS = { AKTIV: 'Aktiv', ABGESCHLOSSEN: 'Abgeschlossen' };
@@ -246,9 +246,9 @@
           <textarea class="textarea small" data-field="description" placeholder="Beschreibung (optional)" aria-label="Beschreibung der Teilaufgabe ${index + 1}">${esc(item.description)}</textarea>
           <label class="meta">Priorität
             <select class="select" data-field="priority" aria-label="Priorität Teilaufgabe ${index + 1}">
-              <option value="HOCH" ${item.priority === 'HOCH' ? 'selected' : ''}>Hoch</option>
-              <option value="MITTEL" ${!item.priority || item.priority === 'MITTEL' ? 'selected' : ''}>Mittel</option>
-              <option value="NIEDRIG" ${item.priority === 'NIEDRIG' ? 'selected' : ''}>Niedrig</option>
+              <option value="HIGH" ${item.priority === 'HIGH' ? 'selected' : ''}>Hoch</option>
+              <option value="MEDIUM" ${!item.priority || item.priority === 'MEDIUM' ? 'selected' : ''}>Mittel</option>
+              <option value="LOW" ${item.priority === 'LOW' ? 'selected' : ''}>Niedrig</option>
             </select>
           </label>
           <div class="meta">${item.done ? 'erledigt' : 'offen'}</div>
@@ -275,13 +275,13 @@
     render();
     return {
       add() {
-        items.push({ id: null, title: '', description: '', priority: 'MITTEL', done: false });
+        items.push({ id: null, title: '', description: '', priority: 'MEDIUM', done: false });
         render();
         const inputs = container.querySelectorAll('[data-field="title"]');
         if (inputs.length) inputs[inputs.length - 1].focus();
       },
       getValue() {
-        return items.map(s => ({ id: s.id, title: String(s.title || '').trim(), description: String(s.description || '').trim(), priority: s.priority || 'MITTEL', done: !!s.done }));
+        return items.map(s => ({ id: s.id, title: String(s.title || '').trim(), description: String(s.description || '').trim(), priority: s.priority || 'MEDIUM', done: !!s.done }));
       }
     };
   }
