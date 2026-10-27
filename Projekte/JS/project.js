@@ -667,8 +667,10 @@
       allParticipants: participants.allParticipants,
       participantIds: participants.participantIds
     };
-    const data = type === 'MEETING' ? commonData : { ...commonData, subtasks };
+    console.log("Select-Wert: ", form.elements.priority.value);
 
+    const data = type === 'MEETING' ? commonData : { ...commonData, subtasks };
+    console.log("data: ", form.elements.priority.value);
     await ui.withBusy($('#newTaskSubmit'), async () => {
       try {
         // KI-Log Nr. 43: Je Task-Typ erhält einen eigenen JSON-Payload.
