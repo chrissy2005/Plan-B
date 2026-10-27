@@ -1,6 +1,17 @@
 const EMAIL_MUSTER = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; //KI-Log Nr. 6
 const API_URL = "https://plan-b-api-6486e78ed17c.herokuapp.com"; //KI-Log Nr. 47: Heroku-Backend.
 
+if("serviceWorker" in navigator){
+    window.addEventListener("load", async () => {
+        try {
+            await navigator.serviceWorker.register("/service-worker.js");
+            console.log("Service Worker registriert");
+        } catch (error){
+            console.error("Service Worker konnte nicht registriert werden:", error);
+        }
+    });
+}
+
 $("#logon").click(function() {
     const email = $("#email-input").val().trim(); //KI-Log Nr. 9
     const password = $("#password-input").val();
