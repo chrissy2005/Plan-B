@@ -83,8 +83,8 @@
     project.members = members;
     state.project = project;
     state.tasks = tasks;
-    state.isLead = project.myRole === 'PROJEKTLEITUNG';
-    state.isActive = project.status === 'AKTIV';
+    state.isLead = project.myRole === 'PROJECT_LEADER';
+    state.isActive = project.status === 'ACTIVE';
   }
 
   async function refresh() {
@@ -151,9 +151,9 @@
 
   function renderMemberCard() {
     const members = state.project.members.slice().sort((a, b) =>
-      (a.role === 'PROJEKTLEITUNG' ? 0 : 1) - (b.role === 'PROJEKTLEITUNG' ? 0 : 1));
+      (a.role === 'PROJECT_LEADER' ? 0 : 1) - (b.role === 'PROJECT_LEADER' ? 0 : 1));
     $('#memberNames').innerHTML = members.map(m =>
-      `<li>${esc(m.name)}${m.role === 'PROJEKTLEITUNG' ? '<span class="pl"> · PL</span>' : ''}</li>`).join('');
+      `<li>${esc(m.name)}${m.role === 'PROJECT_LEADER' ? '<span class="pl"> · PL</span>' : ''}</li>`).join('');
   }
 
   function renderTaskTable() {

@@ -52,7 +52,7 @@
       return;
     }
     list.innerHTML = projects.map(p => {
-      const closed = p.status === 'ABGESCHLOSSEN';
+      const closed = p.status === 'COMPLETED';
       const members = p.memberCount === 1 ? '1 Mitglied' : `${p.memberCount} Mitglieder`;
       return `
         <a class="project-card${closed ? ' is-closed' : ''}" href="project.html?id=${encodeURIComponent(p.id)}">

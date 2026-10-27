@@ -14,8 +14,8 @@
      5. Backend-CORS muss die Frontend-Origin sowie Authorization und Content-Type erlauben.
 
    Erwartete Feldwerte (Enums):
-     role:     'PROJEKTLEITUNG' | 'TEAMMITGLIED'
-     status:   'AKTIV' | 'ABGESCHLOSSEN'
+     role:     'MEMBER' | 'PROJECT_LEADER'
+     status:   'ACTIVE' | 'COMPLETED'
      type:     'MEETING' | 'LANGES_TODO'
      priority: 'HOCH' | 'MITTEL' | 'NIEDRIG'
      Datum/Zeit: 'YYYY-MM-DDTHH:mm' (lokale Zeit, ohne Zeitzone)
@@ -39,6 +39,17 @@
 
   // Login-Datei liegt im Projekt-Root, zwei Ebenen über Projekte/HTML.
   const LOGIN_PAGE = '../../Login/HTML/login.html';
+
+  const toApiPriority = value => ({
+    HOCH: 'HIGH',
+    MITTEL: 'MEDIUM',
+    NIEDRIG: 'LOW'
+  })[String(value || '').toUpperCase()] || String(value || '').toUpperCase();
+  const toApiRole = value => String(value || '').toUpperCase() === 'PROJEKTLEITUNG'
+    || String(value || '').toUpperCase() === 'PROJECT_LEADER' ? 'PROJECT_LEADER' : 'MEMBER';
+  const toApiStatus = value => String(value || '').toUpperCase() === 'ABGESCHLOSSEN'
+    || String(value || '').toUpperCase() === 'COMPLETED' ? 'COMPLETED' : 'ACTIVE';
+  const toBoolean = value => value === true || value === 1 || String(value).toLowerCase() === 'true';
 
   let cachedUser = null; // KI-Log Nr. 41: currentUserId fuer Rollen-/Mitglieder-Mapping wiederverwenden.
 
@@ -149,16 +160,16 @@
   // KI-Log Nr. 41: Response-Mapper akzeptieren direkte Antworten und gängige Wrapper.
   function normalizeRole(value) {
     const role = String(value || '').toUpperCase();
-    if (['PL', 'PROJECT_LEAD', 'PROJECT_LEADER', 'PROJECT_MANAGER', 'PROJEKTLEITER', 'PROJEKTLEITUNG'].includes(role)) return 'PROJEKTLEITUNG';
-    if (['MEMBER', 'TEAM_MEMBER', 'TEAMMITGLIED'].includes(role)) return 'TEAMMITGLIED';
-    return value || 'TEAMMITGLIED';
+    if (['PL', 'PROJECT_LEAD', 'PROJECT_LEADER', 'PROJECT_MANAGER', 'PROJEKTLEITER', 'PROJEKTLEITUNG'].includes(role)) return 'PROJECT_LEADER';
+    if (['MEMBER', 'TEAM_MEMBER', 'TEAMMITGLIED'].includes(role)) return 'MEMBER';
+    return 'MEMBER';
   }
 
   function normalizeStatus(value) {
     const status = String(value || '').toLowerCase();
-    if (['active', 'aktiv'].includes(status)) return 'AKTIV';
-    if (['completed', 'abgeschlossen', 'closed'].includes(status)) return 'ABGESCHLOSSEN';
-    return value || 'AKTIV';
+    if (['active', 'aktiv'].includes(status)) return 'ACTIVE';
+    if (['completed', 'abgeschlossen', 'closed'].includes(status)) return 'COMPLETED';
+    return 'ACTIVE';
   }
 
   function normalizeProject(raw) {
@@ -199,10 +210,10 @@
       description: t.description || '',
       start: t.start || t.startAt || t.startDate || null,
       end: t.end || t.endAt || t.dueAt || t.dueDate || null,
-      priority: ({ HIGH: 'HOCH', MEDIUM: 'MITTEL', LOW: 'NIEDRIG' })[priorityRaw] || priorityRaw,
+      priority: ({ HOCH: 'HIGH', MITTEL: 'MEDIUM', NIEDRIG: 'LOW' })[priorityRaw] || priorityRaw,
       allParticipants: !!t.allParticipants,
       participantIds: t.participantIds || (Array.isArray(t.participants) ? t.participants.map(x => typeof x === 'string' ? x : String(x.userId ?? x.id ?? '')) : []),
-      done: !!(t.done ?? t.completed),
+      done: toBoolean(t.done ?? t.completed),
       doneBy: t.doneBy || null,
       doneAt: t.doneAt || null,
       subtasks: (Array.isArray(t.subtasks) ? t.subtasks : []).map(sub => ({
@@ -210,9 +221,9 @@
         id: String(sub.id ?? sub.subtaskId ?? ''),
         title: sub.title || sub.name || '',
         description: sub.description || '',
-        priority: ({ HIGH: 'HOCH', MEDIUM: 'MITTEL', LOW: 'NIEDRIG' })[String(sub.priority || '').toUpperCase()] || sub.priority || 'MITTEL',
+        priority: ({ HOCH: 'HIGH', MITTEL: 'MEDIUM', NIEDRIG: 'LOW' })[String(sub.priority || '').toUpperCase()] || sub.priority || 'MEDIUM',
         assigneeId: sub.assigneeId || sub.userId || sub.assignedUserId || null,
-        done: !!(sub.done ?? sub.completed),
+        done: toBoolean(sub.done ?? sub.completed),
         schedule: sub.schedule || null
       }))
     };
@@ -375,7 +386,8 @@
     // BACKEND: PATCH /projects/{projectId}  Body { title, description, status } -> 200 Projekt
     async updateProject(projectId, data) {
       if (USE_MOCK) return mock.updateProject(projectId, data);
-      const raw = await request('PATCH', '/projects/' + encodeURIComponent(projectId), data);
+      const payload = { ...data, status: toApiStatus(data.status) };
+      const raw = await request('PATCH', '/projects/' + encodeURIComponent(projectId), payload);
       return normalizeProject(raw);
     },
 
@@ -386,7 +398,7 @@
     // 409, wenn dadurch keine Projektleitung mehr uebrig waere
     updateMemberRole(projectId, userId, role) {
       if (USE_MOCK) return mock.updateMemberRole(projectId, userId, role);
-      const apiRole = role === 'PROJEKTLEITUNG' ? 'PROJECT_LEADER' : 'MEMBER';
+      const apiRole = toApiRole(role);
       return request('PUT', '/projects/' + encodeURIComponent(projectId) + '/members/' + encodeURIComponent(userId), { role: apiRole });
     },
 
@@ -401,7 +413,7 @@
     async addMember(projectId, data) {
       const payload = {
         email: String(data.email || '').trim().toLowerCase(),
-        role: data.role === 'PROJEKTLEITUNG' ? 'PROJECT_LEADER' : 'MEMBER'
+        role: toApiRole(data.role)
       };
       if (USE_MOCK) return mock.addMember(projectId, data);
       console.info('[KI-Log Nr. 68] POST /projects/' + projectId + '/members request JSON:', JSON.stringify(payload, null, 2));
@@ -464,21 +476,22 @@
     // KI-Log Nr. 43: Langes-To-do-Payload mit Teilaufgaben und optionalem Start.
     createLongTodo(projectId, data) {
       if (USE_MOCK) return mock.createTask(projectId, data);
-      const body = {
-                title: data.title,
+      const payload = {
+        title: data.title,
         description: data.description,
         startDateTime: data.start || null,
         endDateTime: data.end,
-        priority: data.priority,
-        assignedMemberIds: data.participantIds,
+        priority: toApiPriority(data.priority),
+        assignedMemberIds: data.participantIds || [],
         subtasks: (data.subtasks || []).map(subtask => ({
           title: subtask.title,
           description: subtask.description,
-          priority: subtask.priority
+          priority: toApiPriority(subtask.priority)
         }))
       };
-      console.log("longToDo-Request: ", JSON.stringify(body,null, 2));
-      return request('POST', '/projects/' + encodeURIComponent(projectId) + '/long-todos', body);
+      // KI-Log Nr. 74: Backend erwartet englische Priority-Enums.
+      console.info('[KI-Log Nr. 74] POST long-todos request JSON:', JSON.stringify(payload, null, 2));
+      return request('POST', '/projects/' + encodeURIComponent(projectId) + '/long-todos', payload);
     },
 
     // BACKEND: PUT /tasks/{taskId}  Body = kompletter Task inkl. subtasks -> 200 Task
@@ -487,7 +500,7 @@
       if (USE_MOCK) return mock.updateTask(taskId, data);
       const base = type === 'MEETING' ? '/meetings/' : '/long-todos/';
       const updates = [['title', data.title], ['description', data.description], ['startDateTime', data.start], ['endDateTime', data.end]];
-      if (type !== 'MEETING') updates.push(['priority', data.priority]);
+      if (type !== 'MEETING') updates.push(['priority', toApiPriority(data.priority)]);
       for (const [attribute, newValue] of updates) {
         await request('PUT', base + encodeURIComponent(taskId), { update: { attribute, newValue } });
       }
@@ -503,8 +516,9 @@
     // BACKEND: PATCH /tasks/{taskId}  Body { done } -> 200 Task  (nur Meetings, nur Teilnehmer)
     async setTaskDone(taskId, done, type) {
       if (USE_MOCK) return mock.setTaskDone(taskId, done);
-      if (type === 'LANGES_TODO') return request('PUT', '/long-todos/' + encodeURIComponent(taskId) + '/done', { done });
-      return request('PUT', '/meetings/' + encodeURIComponent(taskId), { update: { attribute: 'done', newValue: done } });
+      const apiDone = toBoolean(done);
+      if (type === 'LANGES_TODO') return request('PUT', '/long-todos/' + encodeURIComponent(taskId) + '/done', { done: apiDone });
+      return request('PUT', '/meetings/' + encodeURIComponent(taskId), { update: { attribute: 'done', newValue: apiDone } });
     },
 
     /* ---------- Teilaufgaben ---------- */
@@ -521,7 +535,7 @@
     async setSubtaskDone(taskId, subtaskId, done) {
       if (USE_MOCK) return mock.setSubtaskDone(taskId, subtaskId, done);
       return request('PUT', '/long-todos/' + encodeURIComponent(taskId) + '/subtasks/' + encodeURIComponent(subtaskId), {
-        update: { attribute: 'done', newValue: done }
+        update: { attribute: 'done', newValue: toBoolean(done) }
       });
     },
 

@@ -26,7 +26,7 @@
     $('#backToProject').href = 'project.html?id=' + encodeURIComponent(projectId);
     try {
       await loadData();
-      if (state.project.myRole !== 'PROJEKTLEITUNG') {
+      if (state.project.myRole !== 'PROJECT_LEADER') {
         showPageError('Nur die Projektleitung kann Tasks verwalten.');
         return;
       }

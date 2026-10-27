@@ -23,10 +23,10 @@
   }
 
   /* ---------- Beschriftungen ---------- */
-  const PRIO = { HIGH: 'Hoch', MEDIUM: 'Mittel', LOW: 'Niedrig' };
-  const ROLE = { PROJEKTLEITUNG: 'Projektleitung', TEAMMITGLIED: 'Teammitglied', PL: 'Projektleitung', member: 'Teammitglied', MEMBER: 'Teammitglied' };
+  const PRIO = { HIGH: 'Hoch', MEDIUM: 'Mittel', LOW: 'Niedrig', HOCH: 'Hoch', MITTEL: 'Mittel', NIEDRIG: 'Niedrig' };
+  const ROLE = { PROJECT_LEADER: 'Projektleitung', PROJEKTLEITUNG: 'Projektleitung', MEMBER: 'Teammitglied', TEAMMITGLIED: 'Teammitglied', PL: 'Projektleitung', member: 'Teammitglied' };
   const TYPE = { MEETING: 'Meeting', LANGES_TODO: 'Langes To-Do' };
-  const STATUS = { AKTIV: 'Aktiv', ABGESCHLOSSEN: 'Abgeschlossen' };
+  const STATUS = { ACTIVE: 'Aktiv', AKTIV: 'Aktiv', COMPLETED: 'Abgeschlossen', ABGESCHLOSSEN: 'Abgeschlossen' };
 
   /* ---------- Datum (Format 'YYYY-MM-DDTHH:mm') ---------- */
   function parts(iso) {

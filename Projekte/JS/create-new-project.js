@@ -16,8 +16,8 @@ const MELDUNGEN = {
   "project not found": "Projekt nicht gefunden. Bitte die Projektübersicht neu laden."
 };
  
-const STATUS = { active: "Aktiv", completed: "Abgeschlossen" };
-const ROLLEN = { PL: "Projektleiter", member: "Teammitglied" };
+const STATUS = { ACTIVE: "Aktiv", COMPLETED: "Abgeschlossen", active: "Aktiv", completed: "Abgeschlossen" };
+const ROLLEN = { PROJECT_LEADER: "Projektleiter", MEMBER: "Teammitglied", PL: "Projektleiter", member: "Teammitglied" };
  
 
 function getToken() {
