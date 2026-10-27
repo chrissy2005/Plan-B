@@ -450,20 +450,22 @@
     // KI-Log Nr. 43: Meeting-Payload ohne Teilaufgaben.
     createMeeting(projectId, data) {
       if (USE_MOCK) return mock.createTask(projectId, data);
-      return request('POST', '/projects/' + encodeURIComponent(projectId) + '/meetings', {
+      const body = {
         title: data.title,
         description: data.description,
         startDateTime: data.start,
         endDateTime: data.end,
         participantIds: data.participantIds
-      });
+      };
+      console.log("Meeting-Request: ", JSON.stringify(body,null, 2));
+      return request('POST', '/projects/' + encodeURIComponent(projectId) + '/meetings', body );
     },
 
     // KI-Log Nr. 43: Langes-To-do-Payload mit Teilaufgaben und optionalem Start.
     createLongTodo(projectId, data) {
       if (USE_MOCK) return mock.createTask(projectId, data);
-      return request('POST', '/projects/' + encodeURIComponent(projectId) + '/long-todos', {
-        title: data.title,
+      const body = {
+                title: data.title,
         description: data.description,
         startDateTime: data.start || null,
         endDateTime: data.end,
@@ -474,7 +476,9 @@
           description: subtask.description,
           priority: subtask.priority
         }))
-      });
+      };
+      console.log("longToDo-Request: ", JSON.stringify(body,null, 2));
+      return request('POST', '/projects/' + encodeURIComponent(projectId) + '/long-todos', body);
     },
 
     // BACKEND: PUT /tasks/{taskId}  Body = kompletter Task inkl. subtasks -> 200 Task
