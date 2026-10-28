@@ -436,12 +436,14 @@
         request('GET', '/projects/' + encodedId + '/meetings'),
         api.getLongTodos(projectId, filters)
       ]);
-      const unwrap = (raw, key) => {
+      const unwrapList = (raw, key) => {
         const data = raw && (raw.data || raw);
-        return Array.isArray(data) ? data : (data[key] || data.items || []);
+        if (Array.isArray(data)) return data;
+        return Array.isArray(data && data[key]) ? data[key] : (data && data.items) || [];
       };
-      const meetings = unwrap(meetingsRaw, 'meetings').map(normalizeMeeting);
-      const todos = unwrap(todosRaw, 'longTodos').map(normalizeLongTodo);
+      const meetings = unwrapList(meetingsRaw, 'meetings').map(normalizeMeeting);
+      const todos = (Array.isArray(todosRaw) ? todosRaw : unwrapList(todosRaw, 'longTodos'))
+        .map(normalizeLongTodo);
       return meetings.concat(todos);
     },
 
@@ -458,7 +460,11 @@
       const path = '/projects/' + encodeURIComponent(projectId) + '/long-todos' + (query ? '?' + query : '');
       const raw = await request('GET', path);
       console.info('[KI-Log Nr. 75] GET long-todos response JSON:', JSON.stringify(raw, null, 2));
-      return raw;
+      const data = raw && (raw.data || raw);
+      const list = Array.isArray(data)
+        ? data
+        : (Array.isArray(data && data.longTodos) ? data.longTodos : (data && data.items) || []);
+      return list.map(normalizeLongTodo);
     },
 
     // KI-Log Nr. 65: Detail-GETs bleiben ebenfalls nach Ressource getrennt.
