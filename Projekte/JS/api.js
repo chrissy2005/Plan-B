@@ -256,12 +256,15 @@
       type: 'LANGES_TODO',
       start: todo.startDateTime ?? todo.start,
       end: todo.endDateTime ?? todo.end,
+      assignedMemberIds: todo.assignedMemberIds || assignedMembers.map(member => member.userId),
       participantIds: todo.assignedMemberIds || assignedMembers.map(member => member.userId),
       allParticipants: false,
       subtasks: subtasks.map(subtask => ({
         ...subtask,
         id: subtask.subtaskId ?? subtask.id,
-        assigneeId: subtask.assigneeId ?? null
+        assigneeId: subtask.assigneeId ?? null,
+        assigneeFirstName: subtask.assigneeFirstName || '',
+        assigneeLastName: subtask.assigneeLastName || ''
       }))
     });
   }
@@ -426,20 +429,36 @@
 
     // BACKEND: GET /projects/{projectId}/meetings and /projects/{projectId}/long-todos
     // The UI still receives one normalized task list internally.
-    async getTasks(projectId) {
+    async getTasks(projectId, filters) {
       if (USE_MOCK) return mock.getTasks(projectId);
       const encodedId = encodeURIComponent(projectId);
       const [meetingsRaw, todosRaw] = await Promise.all([
         request('GET', '/projects/' + encodedId + '/meetings'),
-        request('GET', '/projects/' + encodedId + '/long-todos')
+        api.getLongTodos(projectId, filters)
       ]);
       const unwrap = (raw, key) => {
         const data = raw && (raw.data || raw);
         return Array.isArray(data) ? data : (data[key] || data.items || []);
       };
       const meetings = unwrap(meetingsRaw, 'meetings').map(normalizeMeeting);
-      const todos = unwrap(todosRaw, 'longToDos').map(normalizeLongTodo);
+      const todos = unwrap(todosRaw, 'longTodos').map(normalizeLongTodo);
       return meetings.concat(todos);
+    },
+
+    // KI-Log Nr. 75: Long-To-Do-GET liest den API-Wrapper longTodos und optionale Filter.
+    async getLongTodos(projectId, filters) {
+      if (USE_MOCK) return mock.getTasks(projectId).then(tasks => tasks.filter(task => task.type === 'LANGES_TODO'));
+      const params = new URLSearchParams();
+      if (filters && filters.priority) params.set('priority', toApiPriority(filters.priority));
+      if (filters && filters.done !== undefined && filters.done !== null) {
+        params.set('done', toBoolean(filters.done) ? 'true' : 'false');
+      }
+      if (filters && filters.sort) params.set('sort', String(filters.sort));
+      const query = params.toString();
+      const path = '/projects/' + encodeURIComponent(projectId) + '/long-todos' + (query ? '?' + query : '');
+      const raw = await request('GET', path);
+      console.info('[KI-Log Nr. 75] GET long-todos response JSON:', JSON.stringify(raw, null, 2));
+      return raw;
     },
 
     // KI-Log Nr. 65: Detail-GETs bleiben ebenfalls nach Ressource getrennt.
@@ -448,9 +467,12 @@
       return request('GET', '/meetings/' + encodeURIComponent(meetingId)).then(normalizeMeeting);
     },
 
-    getLongTodo(longToDoId) {
+    async getLongTodo(longToDoId) {
       if (USE_MOCK) return Promise.resolve(null);
-      return request('GET', '/long-todos/' + encodeURIComponent(longToDoId)).then(normalizeLongTodo);
+      const raw = await request('GET', '/long-todos/' + encodeURIComponent(longToDoId));
+      console.info('[KI-Log Nr. 76] GET long-todo response JSON:', JSON.stringify(raw, null, 2));
+      const todo = raw && (raw.longTodo || raw.longToDo || raw.data || raw);
+      return normalizeLongTodo(todo);
     },
 
     // KI-Log Nr. 43: Meeting und langes To-do verwenden getrennte JSON-Payloads.
