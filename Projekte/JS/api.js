@@ -382,13 +382,13 @@
       const encodedProjectId = encodeURIComponent(projectId);
       let raw;
       try {
-        raw = await request('GET', '/projects/' + encodedProjectId + '/members');
+        raw = await request('GET', '/project/' + encodedProjectId + '/members');
       } catch (error) {
         if (!(error instanceof ApiError) || error.status !== 404) throw error;
-        // KI-Log Nr. 68: Ältere Backend-Stände verwenden den singularen Projektpfad.
-        raw = await request('GET', '/project/' + encodedProjectId + '/members');
+        // KI-Log Nr. 68: Der aktuelle Backend-Stand verwendet den pluralen Projektpfad.
+        raw = await request('GET', '/projects/' + encodedProjectId + '/members');
       }
-      console.info('[KI-Log Nr. 66] GET /projects/' + projectId + '/members response JSON:', JSON.stringify(raw, null, 2));
+      console.info('[KI-Log Nr. 66] GET members response JSON:', JSON.stringify(raw, null, 2));
       const data = raw && (raw.data || raw);
       const members = Array.isArray(data) ? data : (data.members || data.items || []);
       return members.map(member => ({
