@@ -201,6 +201,10 @@
     const t = raw || {};
     const typeRaw = String(t.type || t.taskType || 'MEETING').toUpperCase().replace(/[ -]/g, '_');
     const priorityRaw = String(t.priority || 'MITTEL').toUpperCase();
+    const participantIds = t.participantIds
+      || (Array.isArray(t.participants)
+        ? t.participants.map(x => x.userId ?? x.memberId ?? x.id ?? '')
+        : []);
     return {
       ...t,
       id: String(t.id ?? t.taskId ?? ''),
@@ -212,7 +216,7 @@
       end: t.end || t.endAt || t.dueAt || t.dueDate || null,
       priority: ({ HOCH: 'HIGH', MITTEL: 'MEDIUM', NIEDRIG: 'LOW' })[priorityRaw] || priorityRaw,
       allParticipants: !!t.allParticipants,
-      participantIds: t.participantIds || (Array.isArray(t.participants) ? t.participants.map(x => typeof x === 'string' ? x : String(x.userId ?? x.id ?? '')) : []),
+      participantIds: Array.isArray(participantIds) ? participantIds.map(id => String(id)) : [],
       done: toBoolean(t.done ?? t.completed),
       doneBy: t.doneBy || null,
       doneAt: t.doneAt || null,
@@ -239,7 +243,7 @@
       type: 'MEETING',
       start: meeting.startDateTime ?? meeting.start,
       end: meeting.endDateTime ?? meeting.end,
-      participantIds: meeting.participantIds || participants.map(p => p.userId),
+      participantIds: meeting.participantIds || participants.map(p => p.userId ?? p.memberId ?? p.id ?? ''),
       allParticipants: !!meeting.allParticipants,
       subtasks: []
     });
@@ -256,8 +260,10 @@
       type: 'LANGES_TODO',
       start: todo.startDateTime ?? todo.start,
       end: todo.endDateTime ?? todo.end,
-      assignedMemberIds: todo.assignedMemberIds || assignedMembers.map(member => member.userId),
-      participantIds: todo.assignedMemberIds || assignedMembers.map(member => member.userId),
+      assignedMemberIds: (todo.assignedMemberIds || todo.participantIds || assignedMembers.map(member => member.userId ?? member.memberId ?? member.id ?? ''))
+        .map(id => String(id)),
+      participantIds: (todo.assignedMemberIds || todo.participantIds || assignedMembers.map(member => member.userId ?? member.memberId ?? member.id ?? ''))
+        .map(id => String(id)),
       allParticipants: false,
       subtasks: subtasks.map(subtask => ({
         ...subtask,
@@ -379,7 +385,7 @@
       const members = Array.isArray(data) ? data : (data.members || data.items || []);
       return members.map(member => ({
         ...member,
-        userId: String(member.userId ?? member.id ?? ''),
+        userId: String(member.userId ?? member.memberId ?? member.id ?? ''),
         name: member.name || [member.firstName, member.lastName].filter(Boolean).join(' ') || member.email || '',
         email: member.email || '',
         role: normalizeRole(member.role)

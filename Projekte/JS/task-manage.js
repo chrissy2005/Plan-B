@@ -69,7 +69,7 @@
   }
 
   function memberName(id) {
-    const m = state.project.members.find(x => x.userId === id);
+    const m = state.project.members.find(x => String(x.userId) === String(id));
     return m ? m.name : 'ehemaliges Mitglied';
   }
   function participantsText(task) {

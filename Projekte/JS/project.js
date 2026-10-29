@@ -109,17 +109,21 @@
   const findTask = id => state.tasks.find(t => t.id === id);
   const findSub = (task, id) => (task ? task.subtasks.find(s => s.id === id) : null);
 
-  function member(userId) { return state.project.members.find(m => m.userId === userId) || null; }
+  function member(userId) {
+    return state.project.members.find(m => String(m.userId) === String(userId)) || null;
+  }
   function memberName(userId) { const m = member(userId); return m ? m.name : 'ehemaliges Mitglied'; }
   function nameWithYou(userId) { return memberName(userId) + (state.me && userId === state.me.id ? ' (du)' : ''); }
 
   function isParticipant(task) {
-    return task.allParticipants || task.participantIds.includes(state.me.id);
+    const participantIds = task.participantIds || task.assignedMemberIds || [];
+    return task.allParticipants || participantIds.includes(String(state.me.id));
   }
   function participantsText(task, markYou) {
     if (task.allParticipants) return 'Alle';
-    if (!task.participantIds.length) return '–';
-    return task.participantIds.map(id => (markYou ? nameWithYou(id) : memberName(id))).join(', ');
+    const participantIds = task.participantIds || task.assignedMemberIds || [];
+    if (!participantIds.length) return '–';
+    return participantIds.map(id => (markYou ? nameWithYou(id) : memberName(id))).join(', ');
   }
   function canTickMeeting(task) { return state.isActive && isParticipant(task); }
   function canTickTask(task) {
