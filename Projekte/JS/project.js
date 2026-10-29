@@ -122,6 +122,11 @@
     return task.participantIds.map(id => (markYou ? nameWithYou(id) : memberName(id))).join(', ');
   }
   function canTickMeeting(task) { return state.isActive && isParticipant(task); }
+  function canTickTask(task) {
+    return state.isActive && (task.type === 'LANGES_TODO'
+      ? state.isLead || isParticipant(task)
+      : isParticipant(task));
+  }
   function canTickSub(sub) { return state.isActive && !sub.done; }
 
   function byStart(a, b) { return (a.start || a.end || '').localeCompare(b.start || b.end || ''); }
@@ -184,9 +189,7 @@
     const expanded = state.expanded.has(task.id);
     const p = ui.progressOf(task);
 
-    const doneCell = isLong
-      ? '<span class="cell-auto">automatisch</span>'
-      : `<input type="checkbox" data-action="task-done" data-task="${esc(task.id)}" aria-label="${esc(task.title)} erledigt" ${canTickMeeting(task) ? '' : 'disabled'}>`;
+    const doneCell = `<input type="checkbox" data-action="task-done" data-task="${esc(task.id)}" aria-label="${esc(task.title)} erledigt" ${canTickTask(task) ? '' : 'disabled'}>`;
 
     const toggle = !lead && isLong && task.subtasks.length
       ? `<button type="button" class="toggle" data-action="expand" data-task="${esc(task.id)}" aria-expanded="${expanded}" aria-label="Teilaufgaben ${expanded ? 'einklappen' : 'ausklappen'}">${expanded ? '▾' : '▸'}</button>`
@@ -234,7 +237,7 @@
     $('#doneTitle').textContent = `Erledigt (${done.length})`;
     $('#doneList').hidden = !done.length;
     $('#doneList').innerHTML = done.map(task => {
-      const editable = task.type === 'MEETING' && canTickMeeting(task);
+      const editable = canTickTask(task);
       const by = task.doneBy ? ` · ${esc(memberName(task.doneBy))}` : '';
       const at = task.doneAt ? ` · ${esc(ui.fmtDayMonth(task.doneAt))}` : '';
       return `
