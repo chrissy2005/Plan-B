@@ -278,7 +278,7 @@
   /* ==================================================================
      OEFFENTLICHE API - diese Funktionen nutzen die Seiten
      ================================================================== */
-  async function requestProjectListWithOfflineFallback({storeName, projectId, path, extractList, normalizeIteam}) {
+  async function requestProjectListWithOfflineFallback({storeName, projectId, path, extractList, normalizeItem}) {
     const offlineDb = window.offlineDb;
     if(!offlineDb){
       throw new Error("offline-db.js wurde noch nicht geladen.");
@@ -287,7 +287,7 @@
     try {
       const raw = await request("GET", path);
       const list = extractList(raw);
-      const normalizedList = list.map(normalizeIteam);
+      const normalizedList = list.map(normalizeItem);
       await offlineDb.putRecord(storeName, {
         projectId: cacheProjectId,
         data: normalizedList,
