@@ -56,7 +56,7 @@ function getRecord(storeName, key) {
     return openOfflineDb().then(db => {
         return new Promise((resolve, reject) => {
             const transaction = db.transaction(storeName, "readonly");
-            const request = transaction.ObjectStore(storeName).get(key);
+            const request = transaction.objectStore(storeName).get(key);
             request.onsuccess = () => {
                 resolve(request.result ?? null);
             };
@@ -71,7 +71,7 @@ function putRecord(storeName, record) {
     return openOfflineDb().then(db => {
         return new Promise((resolve, reject) => {
             const transaction = db.transaction(storeName, "readwrite");
-            transaction.ObjectStore(storeName).put(record);
+            transaction.objectStore(storeName).put(record);
             transaction.oncomplete = () => {
                 resolve();
             };
@@ -89,7 +89,7 @@ function putManyRecords(storeName, records){
     return openOfflineDb().then(db => {
         return new Promise((resolve, reject) => {
             const transaction = db.transaction(storeName, "readwrite");
-            const store = transaction.ObjectStore(storeName);
+            const store = transaction.objectStore(storeName);
             records.forEach(record => {
                 store.put(record);
             });
@@ -112,7 +112,7 @@ function getAllRecords(storeName){
     return openOfflineDb().then(db => {
         return new Promise((resolve, reject) => {
             const transaction = db.transaction(storeName, "readonly");
-            const request = transaction.ObjectStore(storeName).getAll();
+            const request = transaction.objectStore(storeName).getAll();
             request.onsuccess = () => {
                 resolve(request.resolve);
             };
@@ -145,7 +145,7 @@ function clearOfflineData() {
                 "calendarWeeks",
                 "metadata"
             ].forEach(storeName => {
-                transaction.ObjectStore(storeName).clear();
+                transaction.objectStore(storeName).clear();
             });
 
             transaction.oncomplete = () => {
