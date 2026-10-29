@@ -278,6 +278,36 @@
   /* ==================================================================
      OEFFENTLICHE API - diese Funktionen nutzen die Seiten
      ================================================================== */
+  async function requestProjectListWithOfflineFallback({storeName, projectId, path, extractList, normalizeIteam}) {
+    const offlineDb = window.offlineDb;
+    if(!offlineDb){
+      throw new Error("offline-db.js wurde noch nicht geladen.");
+    }
+    const cacheProjectId = String(projectId);
+    try {
+      const raw = await request("GET", path);
+      const list = extractList(raw);
+      const normalizedList = list.map(normalizeIteam);
+      await offlineDb.putRecord(storeName, {
+        projectId: cacheProjectId,
+        data: normalizedList,
+        savedAt: new Date().toISOString()
+      });
+      return normalizedList;
+    } catch (error){
+        if(!(error instanceof ApiError) || error.status !== 0){
+          throw error;
+        }
+        const cached = await offlineDb.getRecord(storeName, cacheProjectId);
+        if(!cached){
+          throw error;
+        }
+        console.info(`Offline: ${storeName} für Projekt ${projectId}` + " aus IndexedDB geladen.");
+        return cached.data;
+    }
+  }
+
+
   const api = {
     ApiError,
 
@@ -377,7 +407,7 @@
 
     // KI-Log Nr. 66: GET liefert die Members-Antwort und protokolliert nur JSON-Fachdaten.
     // BACKEND: GET /projects/{projectId}/members -> { message, data: [{ userId, firstName, lastName, role, email }] }
-    async getMembers(projectId) {
+    /*async getMembers(projectId) {
       if (USE_MOCK) return mock.getProject(projectId).then(project => project.members || []);
       const encodedProjectId = encodeURIComponent(projectId);
       let raw;
@@ -399,6 +429,57 @@
         role: normalizeRole(member.role)
       }));
     },
+    */
+
+    //neue GET (projects/{projectId}/members) mit offline fallback
+    async getMembers(projectId) {
+      if (USE_MOCK) return mock.getProject(projectId).then(project => project.members || []);
+      const encodedProjectId = encodeURIComponent(projectId);
+      const path = '/project/' + encodedProjectId + '/members';
+      return requestProjectListWithOfflineFallback({ 
+        storeName: "members",
+        projectId,
+        path,
+        
+        extractList: raw => {
+          const data = raw && (raw.data || raw);
+          if(Array.isArray(data)) { return data;}
+          return Array.isArray(data.members)
+              ? data.members
+              : (Array.isArray(data.items)
+                  ? data.items
+                  : []);
+        },
+
+        normalizeItem: member => ({
+          ...member,
+
+          userId: String(
+            member.userId
+            ?? member.memberId
+            ?? member.id
+            ?? ''
+          ),
+
+          name:
+              member.name
+              || [
+                  member.firstName,
+                  member.lastName
+              ]
+                  .filter(Boolean)
+                  .join(' ')
+              || member.email
+              || "",
+
+          email: member.email || '',
+          role: normalizeRole(member.role)
+        })
+      });
+    },
+
+
+
 
     // BACKEND: PATCH /projects/{projectId}  Body { title, description, status } -> 200 Projekt
     async updateProject(projectId, data) {
