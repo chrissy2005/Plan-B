@@ -436,6 +436,7 @@
       if (USE_MOCK) return mock.getProject(projectId).then(project => project.members || []);
       const encodedProjectId = encodeURIComponent(projectId);
       const path = '/projects/' + encodedProjectId + '/members';
+      console.info("Ich komme an, mit diesem Pfad: " + path)
       return requestProjectListWithOfflineFallback({ 
         storeName: "members",
         projectId,
