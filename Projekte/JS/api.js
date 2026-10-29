@@ -379,7 +379,15 @@
     // BACKEND: GET /projects/{projectId}/members -> { message, data: [{ userId, firstName, lastName, role, email }] }
     async getMembers(projectId) {
       if (USE_MOCK) return mock.getProject(projectId).then(project => project.members || []);
-      const raw = await request('GET', '/projects/' + encodeURIComponent(projectId) + '/members');
+      const encodedProjectId = encodeURIComponent(projectId);
+      let raw;
+      try {
+        raw = await request('GET', '/projects/' + encodedProjectId + '/members');
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.status !== 404) throw error;
+        // KI-Log Nr. 68: Ältere Backend-Stände verwenden den singularen Projektpfad.
+        raw = await request('GET', '/project/' + encodedProjectId + '/members');
+      }
       console.info('[KI-Log Nr. 66] GET /projects/' + projectId + '/members response JSON:', JSON.stringify(raw, null, 2));
       const data = raw && (raw.data || raw);
       const members = Array.isArray(data) ? data : (data.members || data.items || []);
