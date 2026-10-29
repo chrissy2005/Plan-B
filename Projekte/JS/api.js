@@ -435,7 +435,7 @@
     async getMembers(projectId) {
       if (USE_MOCK) return mock.getProject(projectId).then(project => project.members || []);
       const encodedProjectId = encodeURIComponent(projectId);
-      const path = '/project/' + encodedProjectId + '/members';
+      const path = '/projects/' + encodedProjectId + '/members';
       return requestProjectListWithOfflineFallback({ 
         storeName: "members",
         projectId,
