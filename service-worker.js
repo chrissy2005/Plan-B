@@ -1,4 +1,4 @@
-const CACHE_NAME = "project-app-v1";
+const CACHE_NAME = "project-app-v2";
 
 const APP_SHELL = [
     "/",
@@ -26,6 +26,7 @@ const APP_SHELL = [
     "/Projekte/CSS/create-new-project.css",
     "/icons/eye-slash.svg",
     "/icons/eye.svg",
+    "Projekte/JS/offline-db.js"
 ];
 
 self.addEventListener("install", (event) => {
