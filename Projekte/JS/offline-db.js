@@ -2,7 +2,7 @@ const DB_NAME = "plan-b-offline";
 const DB_VERSION = 1;
 
 let dbPromise;
-
+console.info("[Offline-DB]: offline-db.js wurde geladen.");
 function openOfflineDb(){
     if(dbPromise) return dbPromise;
 
