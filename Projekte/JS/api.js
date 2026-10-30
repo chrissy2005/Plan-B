@@ -372,12 +372,52 @@
 
     // BACKEND: GET /projects
     // -> [{ id, title, status, myRole, memberCount, updatedAt:'YYYY-MM-DD' }]
+    /* old getProjects-Method without offline fallback
     async getProjects() {
       if (USE_MOCK) return mock.getProjects();
       const raw = await request('GET', '/projects');
       const data = raw && (raw.data || raw);
       const list = Array.isArray(data) ? data : (data.projects || data.items || []);
       return list.map(normalizeProject);
+    },*/
+
+    //new getProjects-Method with offline-fallback
+    async getProjects() {
+      if (USE_MOCK) return mock.getProjects();
+      const offlineDb = window.offlineDb;
+      if(!offlineDb) throw new Error("offline-db.js wurde noch nicht geladen.");
+      try {
+        console.info("GET /projects wird online geladen");
+        const raw = await request('GET', '/projects');
+        const data = raw && (raw.data || raw);
+        const list = Array.isArray(data) ? data 
+                                         : (data && Array.isArray(data.projects)
+                                                ? data.projects
+                                                : (data && Array.isArray(data.items)
+                                                       ? data.items
+                                                       : []
+                                                  )            
+                                            );
+        const normalizedProjects = list.map(normalizeProject);
+        const records = normalizedProjects.filter(project => projectId).map(project => ({
+                                                                          projectId: String(project.id),
+                                                                          data: project,
+                                                                          savedAt: new Date().toISOString
+                                                                        }));
+        await offlineDb.putManyRecords("projects", records);
+        console.info("[Offline] Projekte wurden in IndexedDB gespeichert.");
+        return normalizedProjects;
+      } catch (error) {
+          if(!(error instanceof ApiError) || error.status !== 0){
+            throw error;
+          }
+          const cachedRecords = await offlineDb.getAllRecords("projects");
+          if(!cachedRecords.length){
+            throw new Error("Keine Verbindung und keine Offline-Projekte vorhanden.");
+          }
+          console.info("[Offline] Projekte wurden aus IndexedDB geladen.");
+          return cachedRecords.map(record => record.data);
+      }
     },
 
     // KI-Log Nr. 55: Das Backend validiert je nach Version "title" oder "name".
