@@ -386,7 +386,7 @@
       if (USE_MOCK) return mock.getProjects();
       console.info("Wir sind in der getProjects Methode");
       const offlineDb = window.offlineDb ;
-      console.info("Das ist die const:". offlineDb);
+      console.info("Das ist die const:", offlineDb);
       if(!offlineDb) {
         throw new Error("offline-db.js wurde noch nicht geladen.");
       }
