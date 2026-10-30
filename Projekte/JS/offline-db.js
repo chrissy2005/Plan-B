@@ -161,6 +161,15 @@ function clearOfflineData() {
     });
 }
 
+console.info("[Offline-DB]: Vor Registrierung");
+console.info({
+    openOfflineDb: typeof openOfflineDb,
+    getRecord: typeof getRecord,
+    putRecord: typeof putRecord,
+    putManyRecords: typeof putManyRecords,
+    getAllRecords: typeof getAllRecords,
+    clearOfflineData: typeof clearOfflineData
+});
 window.offlineDb = {
     openOfflineDb,
     getRecord,
@@ -169,3 +178,4 @@ window.offlineDb = {
     getAllRecords,
     clearOfflineData
 };
+console.info("[Offline-DB]: Globale API registriert", window.offlineDb);

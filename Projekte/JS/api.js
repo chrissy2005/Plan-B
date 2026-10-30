@@ -384,8 +384,10 @@
     //new getProjects-Method with offline-fallback
     async getProjects() {
       if (USE_MOCK) return mock.getProjects();
-      const offlineDb = window.offlineDb;
-      if(!offlineDb) throw new Error("offline-db.js wurde noch nicht geladen.");
+      const offlineDb = window.offlineDb ;
+      if(!offlineDb) {
+        throw new Error("offline-db.js wurde noch nicht geladen.");
+      }
       try {
         console.info("GET /projects wird online geladen");
         const raw = await request('GET', '/projects');
