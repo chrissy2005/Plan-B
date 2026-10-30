@@ -384,7 +384,9 @@
     //new getProjects-Method with offline-fallback
     async getProjects() {
       if (USE_MOCK) return mock.getProjects();
+      console.info("Wir sind in der getProjects Methode");
       const offlineDb = window.offlineDb ;
+      console.info("Das ist die const:". offlineDb);
       if(!offlineDb) {
         throw new Error("offline-db.js wurde noch nicht geladen.");
       }
@@ -401,10 +403,10 @@
                                                   )            
                                             );
         const normalizedProjects = list.map(normalizeProject);
-        const records = normalizedProjects.filter(project => projectId).map(project => ({
+        const records = normalizedProjects.filter(project => project.id).map(project => ({
                                                                           projectId: String(project.id),
                                                                           data: project,
-                                                                          savedAt: new Date().toISOString
+                                                                          savedAt: new Date().toISOString()
                                                                         }));
         await offlineDb.putManyRecords("projects", records);
         console.info("[Offline] Projekte wurden in IndexedDB gespeichert.");

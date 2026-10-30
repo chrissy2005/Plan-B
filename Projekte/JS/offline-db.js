@@ -6,7 +6,7 @@ console.info("[Offline-DB]: offline-db.js wurde geladen.");
 function openOfflineDb(){
     if(dbPromise) return dbPromise;
 
-    dbPromise = new Promise((resolve, rejedct) => {
+    dbPromise = new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
@@ -41,7 +41,7 @@ function openOfflineDb(){
 
         request.onerror = () => {
             dbPromise = undefined;
-            rejedct(request.error);
+            reject(request.error);
         };
 
         request.onblocked = () => {
@@ -114,7 +114,7 @@ function getAllRecords(storeName){
             const transaction = db.transaction(storeName, "readonly");
             const request = transaction.objectStore(storeName).getAll();
             request.onsuccess = () => {
-                resolve(request.resolve);
+                resolve(request.result);
             };
             request.onerror = () => {
                 reject(request.error);
