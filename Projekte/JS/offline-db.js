@@ -1,3 +1,6 @@
+window.offlineDbReady = new Promise(resolve => {
+    window.resolveOfflineDb = resolve;
+});
 const DB_NAME = "plan-b-offline";
 const DB_VERSION = 1;
 
@@ -178,4 +181,5 @@ window.offlineDb = {
     getAllRecords,
     clearOfflineData
 };
+window.resolveOfflineDb(window.offlineDb);
 console.info("[Offline-DB]: Globale API registriert", window.offlineDb);
