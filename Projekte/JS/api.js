@@ -854,9 +854,19 @@
     // Backend setzt das lange To-Do automatisch auf erledigt, wenn alle Teilaufgaben erledigt sind.
     async setSubtaskDone(taskId, subtaskId, done) {
       if (USE_MOCK) return mock.setSubtaskDone(taskId, subtaskId, done);
-      return request('PUT', '/long-todos/' + encodeURIComponent(taskId) + '/subtasks/' + encodeURIComponent(subtaskId), {
+      const path = '/long-todos/' + encodeURIComponent(taskId) + '/subtasks/' + encodeURIComponent(subtaskId);
+      const payload = {
         update: { attribute: 'done', newValue: toBoolean(done) }
-      });
+      };
+      console.info('[Subtask] PUT-Request: ', {method: 'PUT', path, taskId, subtaskId, done, payload});
+      try {
+        const response = await request('PUT', path, payload);
+        console.info('[Subtask] PUT erfolgreich: ', response);
+        return response;
+      } catch(error){
+        console.error('[Subtask] PUT fehlgeschlagen: ',{status: error.status, message: error.message, data: error.data, method: error.method, path: error.path } );
+        throw error;
+      }
     },
 
     // KI-Log Nr. 39 | BACKEND: POST /tasks/{taskId}/subtasks/{subtaskId}/schedule  Body { date, from, to } -> 200 Teilaufgabe
