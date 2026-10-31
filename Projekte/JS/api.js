@@ -126,6 +126,7 @@
       try { data = JSON.parse(text); } catch (e) { data = { message: text }; }
     }
     if (!response.ok) {
+      console.error('[API] Backend-Fehler: ', { status: response.status, method, path, responseData: data});
       const rawMessage = data && (data.message || data.error);
       const knownMessages = {
         'title missing': 'Bitte einen Titel eingeben.',
