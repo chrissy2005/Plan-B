@@ -402,17 +402,29 @@
                                                        : []
                                                   )            
                                             );
+        if(!Array.isArray(list)){
+          throw new ApiError(502, "GET /projects lieferte keine gültige Liste.");
+        }
         const normalizedProjects = list.map(normalizeProject);
-        const records = normalizedProjects.filter(project => project.id).map(project => ({
+        if(normalizedProjects.length > 0){
+          const records = normalizedProjects.filter(project => project.id).map(project => ({
                                                                           projectId: String(project.id),
                                                                           data: project,
                                                                           savedAt: new Date().toISOString()
                                                                         }));
-        await offlineDb.putManyRecords("projects", records);
-        console.info("[Offline] Projekte wurden in IndexedDB gespeichert.");
-        return normalizedProjects;
+          await offlineDb.putManyRecords("projects", records);
+          console.info("[Offline] Projekte wurden in IndexedDB gespeichert.");
+          return normalizedProjects;
+        }
+        const cachedRecords = await offlineDb.getAllRecords("projects");
+        if(cachedRecords.length > 0){
+          console.warn("[Offline DB] Get /projects lieferte keine Projekte. Alter Stand wird verwendet.");
+          return cachedRecords.map(record => record.data);
+        }
+        return [];
       } catch (error) {
-          if(!(error instanceof ApiError) || error.status !== 0){
+          const backendUnvailable = error instanceof ApiError && (error.status === 0 || error.status >= 500);
+          if(!backendUnvailable){
             throw error;
           }
           const cachedRecords = await offlineDb.getAllRecords("projects");

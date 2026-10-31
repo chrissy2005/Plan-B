@@ -1,4 +1,4 @@
-const CACHE_NAME = "project-app-v12";
+const CACHE_NAME = "project-app-v13";
 
 const APP_SHELL = [
     "/",
@@ -87,7 +87,7 @@ self.addEventListener("fetch", (event) => {
                 return response;
             })
             .catch(async () => {
-                const cachedPage = await caches.match(request);
+                const cachedPage = await caches.match(request, {ignoreSearch: true});
                 if(cachedPage){
                     return cachedPage;
                 }
