@@ -1,4 +1,4 @@
-const CACHE_NAME = "project-app-v13";
+const CACHE_NAME = "project-app-v14";
 
 const APP_SHELL = [
     "/",
@@ -10,7 +10,7 @@ const APP_SHELL = [
     "/Login/JS/login.js",
     "/Login/JS/passwort-toggle.js",
     "/Login/JS/register.js",
-    "Login/CSS/login-register.css",
+    "/Login/CSS/login-register.css",
     "/offline.html",
     "/Projekte/HTML/projects.html",
     "/Projekte/HTML/project.html",
@@ -26,7 +26,7 @@ const APP_SHELL = [
     "/Projekte/CSS/create-new-project.css",
     "/icons/eye-slash.svg",
     "/icons/eye.svg",
-    "Projekte/JS/offline-db.js"
+    "/Projekte/JS/offline-db.js"
 ];
 
 self.addEventListener("install", (event) => {
@@ -58,6 +58,24 @@ self.addEventListener("fetch", (event) => {
 
     if(url.origin !== self.location.origin) return;
     if(request.method !== "GET") return;
+    const staticDestinations = [
+        "style",
+        "script",
+        "image",
+        "font"
+    ];
+    if(staticDestinations.includes(request.destination)){
+        event.respondWith((async () => {
+            const cachedResponse = await caches.match(request, { ignoreSearch: true});
+            if(cachedResponse){
+                return cachedResponse;
+            }
+            console.warn("Nicht im Cache gefunden:", request.url);
+            return fetch(request);
+        })()
+        );
+        return;
+    }
     /* old Code without catching heroku server not available error
     if(request.mode === "navigate") {
         event.respondWith(
@@ -105,5 +123,8 @@ self.addEventListener("fetch", (event) => {
         );
         return;
     }
+    event.respondWith(caches.match(request).then(cachedResponse => {
+        return cachedResponse || fetch(request);
+    }));
 });
 
