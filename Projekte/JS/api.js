@@ -581,6 +581,8 @@
 
     // BACKEND: GET /projects/{projectId}/meetings and /projects/{projectId}/long-todos
     // The UI still receives one normalized task list internally.
+    //old Method without Offline-Fallback
+    /*
     async getTasks(projectId, filters) {
       if (USE_MOCK) return mock.getTasks(projectId);
       const encodedId = encodeURIComponent(projectId);
@@ -597,9 +599,50 @@
       const todos = (Array.isArray(todosRaw) ? todosRaw : unwrapList(todosRaw, 'longTodos'))
         .map(normalizeLongTodo);
       return meetings.concat(todos);
+    },*/
+
+    async getTasks(projectId, filters){
+      if (USE_MOCK) return mock.getTasks(projectId);
+      const [
+        meetings,
+        longTodos
+      ] = await Promise.all([
+        api.getMeetings(projectId),
+        api.getLongTodos(projectId, filters)
+      ]);
+      return meetings.concat(longTodos);
+    },
+
+    // GET /projects/{projectId}/meetings with offline Fallback
+    async getMeetings(projectId){
+      if (USE_MOCK) {
+        return mock.getTasks(projectId).then(tasks => tasks.filter(task => task.type === 'MEETING').map(normalizeMeeting));
+      }
+      const path = '/projects/' + encodeURIComponent(projectId) + '/meetings';
+      console.info("[API] GET meetings: ", path);
+      return requestProjectListWithOfflineFallback({
+        storeName: "meetings",
+        projectId,
+        path,
+        extractList: raw => {
+          const data = raw && (raw.data || raw);
+          if(Array.isArray(data)){
+            return data;
+          }
+          if(data && Array.isArray(data.meetings)){
+            return data.meetings;
+          }
+          if(data && Array.isArray(data.items)){
+            return data.items;
+          }
+          return [];
+        },
+        normalizeItem: meeting => normalizeMeeting(meeting)
+      });
     },
 
     // KI-Log Nr. 75: Long-To-Do-GET liest den API-Wrapper longTodos und optionale Filter.
+    /*old Method without Offline-Fallback
     async getLongTodos(projectId, filters) {
       if (USE_MOCK) return mock.getTasks(projectId).then(tasks => tasks.filter(task => task.type === 'LANGES_TODO'));
       const params = new URLSearchParams();
@@ -617,6 +660,64 @@
         ? data
         : (Array.isArray(data && data.longTodos) ? data.longTodos : (data && data.items) || []);
       return list.map(normalizeLongTodo);
+    },*/
+
+    //new GET /projects/{projectId}/long-todos with offline Fallback
+    async getLongTodos(projectId, filters){
+      if (USE_MOCK) {
+        return mock.getTasks(projectId).then(tasks => tasks.filter(task => task.type === 'LANGES_TODO').map(normalizeLongTodo));
+      }
+      const params = new URLSearchParams();
+      if (filters && filters.priority) {
+        params.set('priority', toApiPriority(filters.priority));
+      }
+      if (filters && filters.done !== undefined && filters.done !== null){
+        params.set('done', toBoolean(filters.done) ? 'true' : 'false');
+      }
+      if (filters && filters.sort) {
+       params.set('sort', String(filters.sort));
+      }
+      const query = params.toString();
+      const path = '/projects/' + encodeURIComponent(projectId) + '/long-todos' + (query ? '?' + query : '');
+      const isFiltered = query.length > 0;
+      try {
+        console.info("[API] GET long-todos:", path);
+        const raw = await request('GET', path);
+        console.info('GET long-todos response JSON:', JSON.stringify(raw, null, 2));
+        const data = raw && (raw.data || raw);
+        const list = Array.isArray(data)
+        ? data
+        : (data && Array.isArray(data.longTodos)
+          ? data.longTodos
+          : (data && Array.isArray(data.items)
+            ? data.items
+            : [])
+          );
+        const normalizedLongTodos = list.map(normalizeLongTodo);
+        if(!isFiltered){
+          await window.offlineDb.putRecord("longToDos", {
+            projectId: String(projectId),
+            data: normalizedLongTodos,
+            savedAt: new Date().toISOString()
+          });
+          console.info("[Offline] Long-Toos wurden gespeichert.");
+        }
+        return normalizeLongTodo;
+      } catch (error){
+        if(isFiltered){
+          throw error;
+        }
+        const backendUnvailable = error instanceof ApiError && (error.status === 0 || error.status >= 500);
+        if(!backendUnvailable){
+          throw error;
+        }
+        const cached = await window.offlineDb.getRecord("longToDos", String(projectId));
+          if(!cached){
+            throw new Error("Keine Verbindung und keine Offline-Long-Todos vorhanden.");
+          }
+          console.info("[Offline] Long-Todos wurden aus IndexedDB geladen.");
+          return cached.data;
+      }
     },
 
     // KI-Log Nr. 65: Detail-GETs bleiben ebenfalls nach Ressource getrennt.
