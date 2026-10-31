@@ -62,6 +62,9 @@
       this.path = path || '';
     }
   }
+  function isBackendUnvailable(error){
+    return error instanceof ApiError && (error.status === 0 || error.status >= 500);
+  }
 
   const DEFAULT_MESSAGES = {
     400: 'Die Eingaben sind ungültig.',
@@ -293,16 +296,17 @@
         data: normalizedList,
         savedAt: new Date().toISOString()
       });
+      console.info("[Online] " + storeName + ' für Projekt ' + projectId + ' wurde gespeichert');
       return normalizedList;
     } catch (error){
-        if(!(error instanceof ApiError) || error.status !== 0){
+        if(!isBackendUnvailable(error)){
           throw error;
         }
         const cached = await offlineDb.getRecord(storeName, cacheProjectId);
-        if(!cached){
-          throw error;
+        if(!cached || !Array.isArray(cached.data)){
+          throw Error('Keine Offline-Daten für ' + storeName + ' und Projekt' + projectId + ' vorhanden.');
         }
-        console.info(`Offline: ${storeName} für Projekt ${projectId}` + " aus IndexedDB geladen.");
+        console.info('[Offline] ' + storeName + 'für Projekt ' + projectId + ' wurde aus IndexedDB geladen.');
         return cached.data;
     }
   }
@@ -455,10 +459,46 @@
 
     // BACKEND: GET /projects/{projectId}
     // -> { projectId, name, description, status, role, createdByUserFirstName, createdByUserLastName }
+    /* old getProject-Method without offline-fallback
     async getProject(projectId) {
       if (USE_MOCK) return mock.getProject(projectId);
       const raw = await request('GET', '/projects/' + encodeURIComponent(projectId));
       return normalizeProject(raw);
+    },*/
+
+    //new getProject-Method with offline-fallback
+    async getProject(projectId) {
+      if (USE_MOCK) {
+        return mock.getProject(projectId);
+      }
+      const cacheProjectId = String(projectId);
+      const path = '/projects/' + encodeURIComponent(projectId);
+      try {
+        const raw = await request('GET', path);
+        const project = normalizeProject(raw);
+        if(window.offlineDb){
+          await window.offlineDb.putRecord('projects', {
+            projectId: cacheProjectId,
+            data: project,
+            savedAt: new Date().toISOString()
+          });
+        }
+        console.info('[Online] Projekt ' + projectId + ' wurde in IndexedDB gespeichert');
+        return project;
+      } catch(error){
+          if(!isBackendUnvailable(error)){
+            throw error;
+          }
+          if(!window.offlineDb){
+            throw new Error('Offline-Datenbank ist nicht verfügbar.');
+          }
+          const cached = await offlineDb.getRecord('projects', cacheProjectId);
+          if(!cached || !cached.data){
+            throw new Error('Für Projekt ' + projectId + ' sind keine Offline-Daten vorhanden.');
+          }
+          console.info('[Offline] Projekt ' + projectId + ' wurde aus IndexedDB geladen.');
+          return cached.data;
+      }
     },
 
     // KI-Log Nr. 66: GET liefert die Members-Antwort und protokolliert nur JSON-Fachdaten.
@@ -637,7 +677,7 @@
           }
           return [];
         },
-        normalizeItem: meeting => normalizeMeeting(meeting)
+        normalizeItem: normalizeMeeting
       });
     },
 
@@ -683,7 +723,7 @@
       try {
         console.info("[API] GET long-todos:", path);
         const raw = await request('GET', path);
-        console.info('GET long-todos response JSON:', JSON.stringify(raw, null, 2));
+        console.info('GET long-todos response JSON:', raw);
         const data = raw && (raw.data || raw);
         const list = Array.isArray(data)
         ? data
@@ -702,17 +742,16 @@
           });
           console.info("[Offline] Long-Toos wurden gespeichert.");
         }
-        return normalizeLongTodo;
+        return normalizedLongTodos;
       } catch (error){
         if(isFiltered){
           throw error;
         }
-        const backendUnvailable = error instanceof ApiError && (error.status === 0 || error.status >= 500);
-        if(!backendUnvailable){
+        if(!isBackendUnvailable(error)){
           throw error;
         }
         const cached = await window.offlineDb.getRecord("longToDos", String(projectId));
-          if(!cached){
+          if(!cached || !Array.isArray(cached.data)){
             throw new Error("Keine Verbindung und keine Offline-Long-Todos vorhanden.");
           }
           console.info("[Offline] Long-Todos wurden aus IndexedDB geladen.");

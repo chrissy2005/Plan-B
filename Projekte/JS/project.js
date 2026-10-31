@@ -48,7 +48,24 @@
       return;
     }
     try {
-      if (!state.me) state.me = await api.getCurrentUser();
+      //new part for offline-Fallback
+      try{
+        state.me = await ui.initTopbar(api);
+      } catch(error){
+        console.warn("[Offline] Topbar konnte nicht geladen werden:", error);
+        state.me = null;
+      }
+      if(!state.me){
+        try{
+          state.me = await api.getCurrentUser();
+        } catch(error){
+            console.warn("[Offline] Benutzer konnte nicht geladen werden:", error);
+            state.me = {
+              id: '',
+              name: 'Offline'
+            };
+          }
+      } 
       await loadData();
       // Lange To-Dos sind beim ersten Laden aufgeklappt
       state.tasks.filter(t => t.type === 'LANGES_TODO').forEach(t => state.expanded.add(t.id));
@@ -116,8 +133,10 @@
   function nameWithYou(userId) { return memberName(userId) + (state.me && userId === state.me.id ? ' (du)' : ''); }
 
   function isParticipant(task) {
+    //now with offline fallback when state.me.id is empty
+    const currentUserId = state.me && state.me.id;
     const participantIds = task.participantIds || task.assignedMemberIds || [];
-    return task.allParticipants || participantIds.includes(String(state.me.id));
+    return Boolean(task.allParticipants || ( currentUserId && participantIds.includes(String(currentUserId))));
   }
   function participantsText(task, markYou) {
     if (task.allParticipants) return 'Alle';
@@ -583,7 +602,9 @@
     state.newSubtasks = null;
     state.picker = ui.participantPicker($('#newTaskParticipants'), {
       members: state.project.members,
-      selectedIds: [state.me.id],
+      selectedIds: state.me && state.me.id
+        ? [state.me.id]
+        : [],
       onChange: () => {
         resetAvailability();
       }
