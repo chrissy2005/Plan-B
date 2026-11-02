@@ -53,18 +53,39 @@
     }
     list.innerHTML = projects.map(p => {
       const closed = p.status === 'COMPLETED';
-      const members = p.memberCount === 1 ? '1 Mitglied' : `${p.memberCount} Mitglieder`;
+      const canDelete = p.myRole === 'PROJECT_LEADER';
       return `
-        <a class="project-card${closed ? ' is-closed' : ''}" href="project.html?id=${encodeURIComponent(p.id)}">
+        <article class="project-card${closed ? ' is-closed' : ''}">
           <div class="row">
-            <h3>${esc(p.title)}</h3>
-            <span class="pill">${esc(ui.STATUS[p.status] || p.status)}</span>
+            <a class="project-card-link" href="project.html?id=${encodeURIComponent(p.id)}">
+              <h3>${esc(p.title)}</h3>
+              <span class="pill">${esc(ui.STATUS[p.status] || p.status)}</span>
+            </a>
           </div>
-          <p>Rolle: ${esc(ui.ROLE[p.myRole] || p.myRole)} · ${members}</p>
-          <p>zuletzt bearbeitet: ${esc(ui.fmtDate(p.updatedAt))}</p>
-        </a>`;
+          <div class="project-card-footer">
+            <p>Rolle: ${esc(ui.ROLE[p.myRole] || p.myRole)}</p>
+            ${canDelete ? `<button class="btn btn-sm project-delete" type="button" data-project="${esc(p.id)}" data-title="${esc(p.title)}">Projekt löschen</button>` : ''}
+          </div>
+        </article>`;
     }).join('');
   }
+
+  list.addEventListener('click', async event => {
+    const button = event.target.closest('[data-project]');
+    if (!button) return;
+    event.preventDefault();
+    const title = button.dataset.title || 'dieses Projekt';
+    if (!window.confirm(`Möchtest du das Projekt „${title}“ wirklich löschen? Dieser Vorgang kann nicht rückgängig gemacht werden.`)) return;
+    await ui.withBusy(button, async () => {
+      try {
+        await api.deleteProject(button.dataset.project);
+        ui.toast('Projekt wurde gelöscht.');
+        await loadProjects();
+      } catch (error) {
+        ui.toast(error.message, true);
+      }
+    });
+  });
 
   form.addEventListener('submit', async event => {
     event.preventDefault();

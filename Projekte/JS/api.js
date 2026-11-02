@@ -602,6 +602,12 @@ async getMySubtasks(filters = {}) {
       return { ...result, id: String(id) };
     },
 
+    // BACKEND: DELETE /projects/{projectId} -> 200
+    deleteProject(projectId) {
+      if (USE_MOCK) return mock.deleteProject(projectId);
+      return request('DELETE', '/projects/' + encodeURIComponent(projectId));
+    },
+
     // BACKEND: GET /projects/{projectId}
     // -> { projectId, name, description, status, role, createdByUserFirstName, createdByUserLastName }
     /* old getProject-Method without offline-fallback
@@ -1333,6 +1339,17 @@ async getMySubtasks(filters = {}) {
         p.updatedAt = today();
         save(db);
         return delay(p);
+      },
+
+      deleteProject(projectId) {
+        const db = load();
+        const p = project(db, projectId);
+        if (!p) return fail(404);
+        if (!isLead(db, p)) return fail(403);
+        db.projects = db.projects.filter(item => item.id !== projectId);
+        db.tasks = db.tasks.filter(task => task.projectId !== projectId);
+        save(db);
+        return delay(null);
       },
 
       updateMemberRole(projectId, userId, role) {
