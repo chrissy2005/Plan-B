@@ -844,11 +844,18 @@
 
     /* ---------- Teilaufgaben ---------- */
 
-    // BACKEND: POST /tasks/{taskId}/subtasks/{subtaskId}/claim -> 200 Teilaufgabe
-    // 409 Body { assigneeName }, wenn jemand anderes schneller war (Wireframe "Nicht uebernommen")
-    claimSubtask(taskId, subtaskId) {
-      if (USE_MOCK) return mock.claimSubtask(taskId, subtaskId);
-      return Promise.reject(new ApiError(400, 'Untertasks haben keine Zuständigkeit.'));
+    // KI-Log Nr. 44 | BACKEND: PUT /long-todos/{longToDoId}/subtasks/{subtaskId}/assignment
+    // Body { from, to, assigned } -> { message }
+    assignSubtask(taskId, subtaskId, data) {
+      if (USE_MOCK) {
+        if (data.assigned == null) return mock.releaseSubtask(taskId, subtaskId);
+        return mock.claimSubtask(taskId, subtaskId);
+      }
+      return request('PUT', '/long-todos/' + encodeURIComponent(taskId) + '/subtasks/' + encodeURIComponent(subtaskId) + '/assignment', {
+        from: data.from,
+        to: data.to,
+        assigned: data.assigned == null ? null : Number(data.assigned)
+      });
     },
 
     // BACKEND: PATCH /tasks/{taskId}/subtasks/{subtaskId}  Body { done } -> 200 Task
@@ -1360,6 +1367,21 @@
         touch(db, task.projectId);
         save(db);
         return delay(task);
+      },
+
+      releaseSubtask(taskId, subtaskId) {
+        const db = load();
+        const task = db.tasks.find(t => t.id === taskId);
+        if (!task) return fail(404);
+        const subtask = task.subtasks.find(item => item.id === subtaskId);
+        if (!subtask) return fail(404);
+        if (String(subtask.assigneeId) !== String(db.meId)) {
+          return fail(409, 'Teilaufgabe ist nicht dir zugewiesen.');
+        }
+        subtask.assigneeId = null;
+        touch(db, task.projectId);
+        save(db);
+        return delay(subtask);
       },
 
       scheduleSubtask(taskId, subtaskId, slot) {

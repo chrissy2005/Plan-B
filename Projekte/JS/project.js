@@ -379,9 +379,18 @@
       <div class="detail-label">Priorität</div>
       <div class="detail-value">${esc(ui.PRIO[sub.priority] || sub.priority || 'Mittel')}</div>
       <div class="detail-label">Beschreibung</div>
-      <div class="detail-desc">${sub.description ? esc(sub.description) : 'Keine Beschreibung.'}</div>`;
+      <div class="detail-desc">${sub.description ? esc(sub.description) : 'Keine Beschreibung.'}</div>
+      <div class="detail-label">Zuständigkeit</div>
+      <div class="detail-value">${sub.assigneeId ? esc(memberName(sub.assigneeId)) : 'Noch nicht zugewiesen.'}</div>`;
 
+    const assignedToMe = sub.assigneeId != null && String(sub.assigneeId) === String(state.me && state.me.id);
     $('#subtaskFoot').innerHTML = `
+      ${!sub.assigneeId && !sub.done && isParticipant(task)
+        ? `<button type="button" class="btn btn-primary btn-lg" data-action="claim" data-task="${esc(taskId)}" data-sub="${esc(subId)}">Aufgabe übernehmen</button>`
+        : ''}
+      ${assignedToMe && !sub.done
+        ? `<button type="button" class="btn btn-secondary btn-lg" data-action="release" data-task="${esc(taskId)}" data-sub="${esc(subId)}">Aufgabe wieder abgeben</button>`
+        : ''}
       <button type="button" class="btn btn-lg" data-close>Schließen</button>
       `;
   }
@@ -421,10 +430,15 @@
 
   async function claimSubtask(button) {
     const { task: taskId, sub: subId } = button.dataset;
+    const task = findTask(taskId);
     await ui.withBusy(button, async () => {
       try {
-        // BACKEND: POST /tasks/{taskId}/subtasks/{subtaskId}/claim  (409 = schon vergeben)
-        await api.claimSubtask(taskId, subId);
+        // KI-Log Nr. 44 | BACKEND: PUT .../assignment { from, to, assigned }
+        await api.assignSubtask(taskId, subId, {
+          from: task && task.start || '',
+          to: task && task.end || '',
+          assigned: state.me.id
+        });
         ui.toast('Teilaufgabe übernommen.');
         await refresh();
         if (!$('#subtaskModal').hidden) renderSubtask(taskId, subId);
@@ -437,6 +451,26 @@
         } else {
           ui.toast(error.message, true);
         }
+      }
+    });
+  }
+
+  async function releaseSubtask(button) {
+    const { task: taskId, sub: subId } = button.dataset;
+    const task = findTask(taskId);
+    await ui.withBusy(button, async () => {
+      try {
+        // KI-Log Nr. 44 | BACKEND: PUT .../assignment { from, to, assigned: null }
+        await api.assignSubtask(taskId, subId, {
+          from: task && task.start || '',
+          to: task && task.end || '',
+          assigned: null
+        });
+        ui.toast('Teilaufgabe wieder freigegeben.');
+        await refresh();
+        if (!$('#subtaskModal').hidden) renderSubtask(taskId, subId);
+      } catch (error) {
+        ui.toast(error.message, true);
       }
     });
   }
@@ -782,6 +816,7 @@
     } else if (action === 'open-task') openTaskDetail(task);
     else if (action === 'open-sub') openSubtask(task, sub);
     else if (action === 'claim') claimSubtask(el);
+    else if (action === 'release') releaseSubtask(el);
     else if (action === 'plan-sub') openSchedule(task, sub);
     else if (action === 'edit-member') openRoleEditor(el.dataset.user);
     else if (action === 'remove-member') removeMember(el);
