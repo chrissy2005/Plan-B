@@ -53,7 +53,7 @@
     }
     list.innerHTML = projects.map(p => {
       const closed = p.status === 'COMPLETED';
-      const canDelete = p.myRole === 'PROJECT_LEADER';
+      const canDelete = p.myRole === 'PROJEKTLEITUNG' || p.myRole === 'PROJECT_LEADER';
       return `
         <article class="project-card${closed ? ' is-closed' : ''}">
           <div class="row">
