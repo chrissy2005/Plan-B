@@ -191,7 +191,7 @@
         <th scope="col">Erledigt</th>
         <th scope="col">Aufgabe</th>
         <th scope="col">Typ</th>
-        <th scope="col">Teilnehmer</th>
+        <th scope="col">${lead ? 'Teilnehmer' : 'Zuständig / Teilnehmer'}</th>
         <th scope="col">Start</th>
         <th scope="col">Ende / Frist</th>
         <th scope="col">Prio</th>
@@ -246,10 +246,10 @@
           <td><input type="checkbox" data-action="sub-done" data-task="${esc(task.id)}" data-sub="${esc(sub.id)}" aria-label="${esc(sub.title)} erledigt" ${sub.done ? 'checked' : ''} ${canTickSub(sub) ? '' : 'disabled'}></td>
           <td><div class="sub-title">↳ <button type="button" class="link-btn light" data-action="open-sub" data-task="${esc(task.id)}" data-sub="${esc(sub.id)}">${esc(sub.title)}</button></div></td>
           <td>Teilaufgabe</td>
-          <td>${esc(ui.PRIO[sub.priority] || sub.priority || 'Mittel')}</td>
+          <td>${sub.assigneeId ? esc(memberName(sub.assigneeId)) : '–'}</td>
           <td>–</td>
           <td>wie To-Do</td>
-          <td>–</td>
+          <td><span class="pill">${esc(ui.PRIO[sub.priority] || sub.priority || '–')}</span></td>
           <td>${sub.done ? 'erledigt' : 'offen'}</td>
         </tr>`;
     }).join('');
