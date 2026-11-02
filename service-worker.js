@@ -1,4 +1,4 @@
-const CACHE_NAME = "project-app-v18";
+const CACHE_NAME = "project-app-v19";
 
 const APP_SHELL = [
     "/",
@@ -66,12 +66,20 @@ self.addEventListener("fetch", (event) => {
     ];
     if(staticDestinations.includes(request.destination)){
         event.respondWith((async () => {
-            const cachedResponse = await caches.match(request, { ignoreSearch: true});
-            if(cachedResponse){
-                return cachedResponse;
+            try {
+                const networkResponse = await fetch(request);
+                if (networkResponse.ok) {
+                    const cache = await caches.open(CACHE_NAME);
+                    await cache.put(request, networkResponse.clone());
+                }
+                return networkResponse;
+            } catch (error) {
+                const cachedResponse = await caches.match(request, { ignoreSearch: true });
+                if (cachedResponse) {
+                    return cachedResponse;
+                }
+                throw error;
             }
-            console.warn("Nicht im Cache gefunden:", request.url);
-            return fetch(request);
         })()
         );
         return;
@@ -127,4 +135,3 @@ self.addEventListener("fetch", (event) => {
         return cachedResponse || fetch(request);
     }));
 });
-
