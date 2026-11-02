@@ -105,6 +105,7 @@
 
     let response;
     try {
+      console.info('[API] Request: ', { method, url: API_BASE + path, body: body ?? null });
       response = await fetch(API_BASE + path, {
         method,
         headers,
@@ -312,9 +313,140 @@
     }
   }
 
+  function buildDashboardQuery(filters = {}) {
+    const params = new URLSearchParams();
+
+    if (filters.from) {
+      params.append('from', filters.from);
+    }
+
+    if (filters.to) {
+      params.append('to', filters.to);
+    }
+
+    if (filters.priority) {
+      params.set('priority', toApiPriority(filters.priority));
+    }
+
+    const query = params.toString();
+    return query ? '?' + query : '';
+  }
 
   const api = {
     ApiError,
+
+    /*---------------Filterung im Dashboard----------*/
+    async getMyDashboardTasks(filters = {}) {
+      const [
+        meetings,
+        longTodos,
+        subtasks
+      ] = await Promise.all([
+        api.getMyMeetings(filters),
+        api.getMyLongTodos(filters),
+        api.getMySubtasks(filters)
+      ]);
+
+      return [
+        ...meetings,
+        ...longTodos,
+        ...subtasks
+      ].sort((a, b) => {
+        const dateA = a.start || a.end || '';
+        const dateB = b.start || b.end || '';
+
+        return dateA.localeCompare(dateB);
+      });
+    },
+
+     async getMyMeetings(filters = {}) {
+    const path =
+        '/me/meetings' +
+        buildDashboardQuery(filters);
+
+    const raw = await request('GET', path);
+    const data = raw && (raw.data || raw);
+
+    const list = Array.isArray(data)
+        ? data
+        : (
+            Array.isArray(data.meetings)
+                ? data.meetings
+                : data.items || []
+        );
+
+    return list.map(meeting => ({
+        ...normalizeMeeting(meeting),
+        projectId: String(meeting.projectId || ''),
+        projectName: meeting.projectName || ''
+    }));
+},
+
+async getMyLongTodos(filters = {}) {
+    const path =
+        '/me/long-todos' +
+        buildDashboardQuery(filters);
+
+    const raw = await request('GET', path);
+    const data = raw && (raw.data || raw);
+
+    const list = Array.isArray(data)
+        ? data
+        : (
+            Array.isArray(data.longTodos)
+                ? data.longTodos
+                : data.items || []
+        );
+
+    return list.map(todo => ({
+        ...normalizeLongTodo(todo),
+        projectId: String(todo.projectId || ''),
+        projectName: todo.projectName || ''
+    }));
+},
+
+async getMySubtasks(filters = {}) {
+    const path =
+        '/me/subtasks' +
+        buildDashboardQuery(filters);
+
+    const raw = await request('GET', path);
+    const data = raw && (raw.data || raw);
+
+    const list = Array.isArray(data)
+        ? data
+        : (
+            Array.isArray(data.subtasks)
+                ? data.subtasks
+                : data.items || []
+        );
+
+    return list.map(subtask => ({
+        ...subtask,
+        id: String(
+            subtask.subtaskId ||
+            subtask.id ||
+            ''
+        ),
+        type: 'SUBTASK',
+        title: subtask.title || '',
+        projectId: String(subtask.projectId || ''),
+        projectName: subtask.projectName || '',
+        longToDoId: String(
+            subtask.longToDoId ||
+            subtask.longTodoId ||
+            ''
+        ),
+        longToDoTitle: subtask.longToDoTitle || '',
+        start: subtask.startDateTime || null,
+        end: subtask.endDateTime || null,
+        priority: subtask.priority || 'MEDIUM',
+        done: toBoolean(subtask.done),
+        doneAt: subtask.doneAt || null
+    }));
+},
+
+
 
     /* ---------- Benutzer / Sitzung ---------- */
 

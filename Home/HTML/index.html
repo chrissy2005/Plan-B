@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="../CSS/menu.css">
     <script src="/Projekte/JS/offline-db.js" defer></script>
     <script src="../JS/menu.js" defer></script> <!--KI-Log Nr. 21-->
+    <script src="../JS/home.js" defer></script>
+    <script src="/Projekte/JS/api.js" defer></script>
+    <script src="/Projekte/JS/ui.js" defer></script>
 </head>
 <body>
 
@@ -19,8 +22,136 @@
             <button id="logout" onclick="logout()">Abmelden</button> <!--KI-Log Nr. 21-->
     </nav>
 
-    <main>
-        <h1>Meine To-Do's</h1>
-    </main>
+    <main class="page dashboard-page">
+    <section class="projects-col">
+        <div class="page-head">
+            <div>
+                <h1>Meine To-Do's</h1>
+                <p class="description">
+                    Alle dir zugewiesenen Meetings, Long-To-dos
+                    und Untertasks aus deinen Projekten.
+                </p>
+            </div>
+        </div>
+
+        <form id="dashboardFilters" class="card filters-card">
+            <div class="grid-2">
+                <div class="field">
+                    <label for="dashboardFrom">
+                        Von
+                    </label>
+                    <input
+                        class="input"
+                        id="dashboardFrom"
+                        name="from"
+                        type="datetime-local"
+                    >
+                </div>
+
+                <div class="field">
+                    <label for="dashboardTo">
+                        Bis
+                    </label>
+                    <input
+                        class="input"
+                        id="dashboardTo"
+                        name="to"
+                        type="datetime-local"
+                    >
+                    <small>
+                        Leer lassen, um auch zukünftige Aufgaben anzuzeigen.
+                    </small>
+                </div>
+
+
+                <div class="field">
+                    <label for="dashboardPriority">
+                        Priorität
+                    </label>
+                    <select
+                        class="select"
+                        id="dashboardPriority"
+                        name="priority"
+                    >
+                        <option value="">Alle</option>
+                        <option value="HIGH">Hoch</option>
+                        <option value="MEDIUM">Mittel</option>
+                        <option value="LOW">Niedrig</option>
+                    </select>
+                </div>
+            </div>
+
+            
+            <button
+                class="btn btn-primary"
+                type="submit"
+            >
+                Filtern
+            </button>
+
+            <button
+                class="btn"
+                type="button"
+                id="clearDashboardFilters"
+            >
+                Filter zurücksetzen
+            </button>
+            
+        </form>
+
+        <div
+            id="dashboardMessage"
+            class="page-message"
+            role="alert"
+            hidden
+        ></div>
+
+        <section>
+            <div class="section-head">
+                <h2>Offene Aufgaben</h2>
+            </div>
+
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                        <tr>
+                            <th>Aufgabe</th>
+                            <th>Typ</th>
+                            <th>Projekt</th>
+                            <th>Start</th>
+                            <th>Ende/Frist</th>
+                            <th>Priorität</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="openTaskBody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section>
+            <div class="section-head">
+                <h2>Erledigt – letzte 7 Tage</h2>
+            </div>
+
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                        <tr>
+                            <th>Aufgabe</th>
+                            <th>Typ</th>
+                            <th>Projekt</th>
+                            <th>Erledigt am</th>
+                            <th>Priorität</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="doneTaskBody"></tbody>
+                </table>
+            </div>
+        </section>
+    </section>
+</main>
+
 </body>
 </html>
