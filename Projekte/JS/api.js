@@ -350,8 +350,20 @@
     async logout() {
       try {
         await request('DELETE', '/auth');
-      } finally {
-        try { window.sessionStorage.removeItem(TOKEN_KEY); } catch (error) { /* Storage kann gesperrt sein */ }
+      } catch(error){
+        console.warn("[Logout] Backend nicht erreichbar. Lokaler Logout wird trotzdem durchgeführt.", error);
+      }
+      finally {
+        try { window.sessionStorage.removeItem(TOKEN_KEY); } catch (error) { console.warn("[Logout] Token konnte nicht gelöscht werden.", error); }
+        cachedUser = null;
+        try{
+          if(window.offlineDb&& typeof window.offlineDb.clearAllRecords === 'function'){
+            await window.offlineDb.clearOfflineData();
+            console.info("[Logout] Offline-Daten wurde gelöscht.");
+          }
+        } catch(error){
+            console.warn("[Logout] Fehler beim Löschen der Offline-Daten.", error);
+          }
       }
     },
 
