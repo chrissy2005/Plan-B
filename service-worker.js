@@ -26,7 +26,10 @@ const APP_SHELL = [
     "/Projekte/CSS/create-new-project.css",
     "/icons/eye-slash.svg",
     "/icons/eye.svg",
-    "/Projekte/JS/offline-db.js"
+    "/Projekte/JS/offline-db.js",
+    "/Kalender/HTML/calender.html",
+    "/Kalender/JS/calendar.js",
+    "/Kalender/CSS/calendar.css"
 ];
 
 self.addEventListener("install", (event) => {

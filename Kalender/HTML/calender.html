@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Kalender</title>
+    <link rel="stylesheet" href="../../Home/CSS/menu.css">
+    <link rel="stylesheet" href="../CSS/calendar.css">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="../../Home/JS/menu.js" defer></script>
+    <script src="../JS/calendar.js" defer></script>
+</head>
+<body>
+    <nav>
+        <a href="/Home/HTML/index.html">Home</a>
+        <a href="/Projekte/HTML/projects.html">Projekte</a>
+        <a href="/Benutzer/HTML/user.html">Benutzer</a>
+        <a href="/Kalender/HTML/calender.html">Kalender</a>
+        <button id="logout" onclick="logout()">Abmelden</button>
+    </nav>
+
+    <main class="page calendar-page">
+        <div class="page-head">
+            <div>
+                <h1>Google Kalender</h1>
+                <p class="description">
+                    Termine direkt aus deinem Google Kalender laden und neue Termine anlegen.
+                </p>
+            </div>
+        </div>
+
+        <section class="card calendar-connection">
+            <h2>Verbindung</h2>
+            <p id="calendarConnectionStatus" role="status">
+                Noch nicht mit Google verbunden.
+            </p>
+            <button id="googleConnect" class="btn btn-primary" type="button">
+                Mit Google Kalender verbinden
+            </button>
+            <button id="googleDisconnect" class="btn" type="button" hidden>
+                Verbindung trennen
+            </button>
+        </section>
+
+        <div id="calendarMessage" class="page-message" role="alert" hidden></div>
+
+        <section class="card">
+            <div class="section-head">
+                <h2>Termine</h2>
+                <button id="reloadCalendar" class="btn" type="button" disabled>
+                    Aktualisieren
+                </button>
+            </div>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                        <tr>
+                            <th>Termin</th>
+                            <th>Beginn</th>
+                            <th>Ende</th>
+                            <th>Ort</th>
+                        </tr>
+                    </thead>
+                    <tbody id="googleEventsBody">
+                        <tr><td colspan="4" class="empty">Bitte zuerst Google verbinden.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>Google-Termin erstellen</h2>
+            <form id="googleEventForm" class="calendar-form">
+                <label>
+                    Titel
+                    <input id="eventTitle" class="input" type="text" required maxlength="200">
+                </label>
+                <label>
+                    Beginn
+                    <input id="eventStart" class="input" type="datetime-local" required>
+                </label>
+                <label>
+                    Ende
+                    <input id="eventEnd" class="input" type="datetime-local" required>
+                </label>
+                <label>
+                    Ort
+                    <input id="eventLocation" class="input" type="text" maxlength="200">
+                </label>
+                <label>
+                    Beschreibung
+                    <textarea id="eventDescription" class="input" rows="3" maxlength="2000"></textarea>
+                </label>
+                <button class="btn btn-primary" type="submit" disabled id="createGoogleEvent">
+                    Termin in Google Kalender speichern
+                </button>
+            </form>
+        </section>
+    </main>
+</body>
+</html>
