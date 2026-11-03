@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Google Kalender</title>
     <link rel="stylesheet" href="../../Home/CSS/menu.css">
+    <link rel="stylesheet" href="../../Projekte/CSS/projects.css">
     <link rel="stylesheet" href="../CSS/calendar.css">
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script id="googleIdentityScript" src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="../../Home/JS/menu.js" defer></script>
     <script src="../JS/calendar.js" defer></script>
 </head>
@@ -32,7 +33,7 @@
         <section class="card calendar-connection">
             <h2>Verbindung</h2>
             <p id="calendarConnectionStatus" role="status">
-                Noch nicht mit Google verbunden.
+                Google-Anmeldung wird vorbereitet …
             </p>
             <button id="googleConnect" class="btn btn-primary" type="button">
                 Mit Google Kalender verbinden

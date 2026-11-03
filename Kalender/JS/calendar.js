@@ -19,6 +19,7 @@
 
     let tokenClient = null;
     let accessToken = null;
+    let googleReady = false;
 
     init();
 
@@ -28,6 +29,16 @@
         reloadButton.addEventListener('click', loadEvents);
         form.addEventListener('submit', createEvent);
         setDefaultEventTimes();
+        const googleScript = document.querySelector('#googleIdentityScript');
+        googleScript.addEventListener('load', () => {
+            googleReady = true;
+            statusBox.textContent = 'Bereit für die Google-Anmeldung.';
+        });
+        googleScript.addEventListener('error', () => {
+            showMessage('Die Google-Anmeldung konnte nicht geladen werden. Prüfe die Internetverbindung oder blockierende Browser-Erweiterungen.', true);
+            statusBox.textContent = 'Google-Anmeldung konnte nicht geladen werden.';
+        });
+        waitForGoogleClient();
     }
 
     function connectGoogle() {
@@ -39,8 +50,8 @@
             return;
         }
 
-        if (!window.google || !window.google.accounts) {
-            showMessage('Die Google-Anmeldung konnte noch nicht geladen werden. Bitte Seite neu laden.', true);
+        if (!googleReady || !window.google || !window.google.accounts || !window.google.accounts.oauth2) {
+            showMessage('Die Google-Anmeldung wird noch geladen. Bitte in wenigen Sekunden erneut versuchen.', true);
             return;
         }
 
@@ -50,16 +61,50 @@
             client_id: GOOGLE_CLIENT_ID,
             scope: CALENDAR_SCOPE,
             callback: response => {
-                if (response.error) {
-                    showMessage('Google-Anmeldung fehlgeschlagen: ' + response.error, true);
+                if (response.error || !response.access_token) {
+                    showMessage(formatGoogleAuthError(response), true);
                     return;
                 }
                 accessToken = response.access_token;
                 setConnectedState(true);
                 loadEvents();
+            },
+            error_callback: error => {
+                showMessage(formatGoogleAuthError(error), true);
             }
         });
-        tokenClient.requestAccessToken({ prompt: 'consent' });
+        try {
+            tokenClient.requestAccessToken({ prompt: 'consent' });
+        } catch (error) {
+            showMessage('Google-Anmeldung konnte nicht gestartet werden: ' + error.message, true);
+        }
+    }
+
+    function waitForGoogleClient() {
+        const startedAt = Date.now();
+        const timer = window.setInterval(() => {
+            if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+                googleReady = true;
+                statusBox.textContent = 'Bereit für die Google-Anmeldung.';
+                window.clearInterval(timer);
+            } else if (Date.now() - startedAt > 10000) {
+                window.clearInterval(timer);
+                statusBox.textContent = 'Google-Anmeldung konnte nicht geladen werden.';
+                showMessage('Google Identity Services antwortet nicht. Bitte Seite mit Strg+F5 neu laden.', true);
+            }
+        }, 100);
+    }
+
+    function formatGoogleAuthError(error) {
+        const code = error && (error.error || error.type);
+        const messages = {
+            popup_failed_to_open: 'Das Google-Anmeldefenster wurde blockiert. Erlaube Pop-ups für diese Website.',
+            popup_closed: 'Das Google-Anmeldefenster wurde geschlossen.',
+            access_denied: 'Der Zugriff auf Google Calendar wurde abgelehnt.',
+            origin_mismatch: 'Diese Website ist in Google Cloud nicht als autorisierte JavaScript-Quelle eingetragen.',
+            invalid_client: 'Die OAuth-Client-ID ist ungültig oder gehört zu einem anderen Google-Cloud-Projekt.'
+        };
+        return messages[code] || 'Google-Anmeldung fehlgeschlagen' + (code ? ': ' + code : '.');
     }
 
     function disconnectGoogle() {
