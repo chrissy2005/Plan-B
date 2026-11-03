@@ -989,7 +989,7 @@ async getMySubtasks(filters = {}) {
       if (USE_MOCK) return mock.setTaskDone(taskId, done);
       const apiDone = toBoolean(done);
       if (type === 'LANGES_TODO') return request('PUT', '/long-todos/' + encodeURIComponent(taskId) + '/done', { done: apiDone });
-      return request('PUT', '/meetings/' + encodeURIComponent(taskId), { update: { attribute: 'done', newValue: apiDone } });
+      return request('PUT', '/meetings/' + encodeURIComponent(taskId) + '/done', { update: { attribute: 'done', newValue: apiDone } });
     },
 
     /* ---------- Teilaufgaben ---------- */
