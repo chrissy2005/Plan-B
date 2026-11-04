@@ -729,11 +729,14 @@ async getMySubtasks(filters = {}) {
 
 
 
-    // BACKEND: PATCH /projects/{projectId}  Body { title, description, status } -> 200 Projekt
+    // BACKEND: PUT /projects/{projectId}  Body { title, description, status } -> 200 Projekt
     async updateProject(projectId, data) {
       if (USE_MOCK) return mock.updateProject(projectId, data);
-      const payload = { ...data, status: toApiStatus(data.status) };
-      const raw = await request('PATCH', '/projects/' + encodeURIComponent(projectId), payload);
+      const payload = { 
+        title: data.title,
+        description: data.description || '',
+        status: toApiStatus(data.status) };
+      const raw = await request('PUT', '/projects/' + encodeURIComponent(projectId), payload);
       return normalizeProject(raw);
     },
 
