@@ -1,4 +1,4 @@
-const CACHE_NAME = "project-app-v24";
+const CACHE_NAME = "project-app-v25";
 
 const APP_SHELL = [
     "/",

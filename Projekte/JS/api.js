@@ -993,7 +993,7 @@ async getMySubtasks(filters = {}) {
     //updateMeeting-Method to PUT /meetings/{meetingId}
     async updateMeeting(meetingId, data){
       if(USE_MOCK){
-        return mock.updateTask;
+        return mock.updateTask(meetingId, data);
       }
       const payload = {
         title: data.title,
