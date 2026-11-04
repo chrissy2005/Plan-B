@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalender | Plan B</title>
+
+    <!-- Bestehende Gestaltung und eigene Kalender-Styles -->
+    <link rel="stylesheet" href="/Home/CSS/menu.css">
+    <link rel="stylesheet" href="/Projekte/CSS/projects.css">
+    <link rel="stylesheet" href="../CSS/calendar.css">
+
+    <!-- Bestehende API- und Anmeldefunktionen -->
+    <script src="/Projekte/JS/offline-db.js" defer></script>
+    <script src="/Projekte/JS/api.js" defer></script>
+    <script src="/Projekte/JS/ui.js" defer></script>
+    <script src="/Home/JS/menu.js" defer></script>
+
+    <!-- Verhalten der Kalenderansicht -->
+    <script src="../JS/calendar.js" defer></script>
+</head>
+<body>
+    <nav aria-label="Hauptnavigation">
+        <a href="/Home/HTML/index.html">Home</a>
+        <a href="/Projekte/HTML/projects.html">Projekte</a>
+        <a href="/Benutzer/HTML/user.html">Benutzer</a>
+        <a href="/Kalender/HTML/calender.html"
+           class="active"
+           aria-current="page">Kalender</a>
+        <button id="logout" type="button" onclick="logout()">
+            Abmelden
+        </button>
+    </nav>
+
+<dialog id="calendarDetails" class="calendar-details"
+        aria-labelledby="calendarDetailsTitle">
+    <h2 id="calendarDetailsTitle"></h2>
+    <p id="calendarDetailsType"></p>
+
+    <dl>
+        <dt>Zuordnung</dt>
+        <dd id="calendarDetailsContext"></dd>
+
+        <dt>Beginn</dt>
+        <dd id="calendarDetailsStart"></dd>
+
+        <dt>Ende / Frist</dt>
+        <dd id="calendarDetailsEnd"></dd>
+    </dl>
+
+    <p id="calendarDetailsProgress" hidden></p>
+    <p class="calendar-details-note">Vorschau mit Beispieldaten.</p>
+
+    <div id="calendarDetailsActions"
+        class="calendar-schedule-actions"
+        hidden>
+        <button id="calendarEditSchedule" type="button" class="btn">
+            Zeitfenster ändern
+        </button>
+
+        <button id="calendarRemoveSchedule" type="button" class="btn">
+            Planung aufheben
+        </button>
+    </div>
+
+    <form method="dialog">
+        <button type="submit" class="btn" autofocus>Schließen</button>
+    </form>
+</dialog>
+
+    <main class="page calendar-page">
+        <header class="calendar-header">
+            <h1>Kalender</h1>
+
+            <div class="calendar-navigation">
+                <button id="previousWeek" class="icon-btn" type="button"
+                        aria-label="Vorherige Woche">
+                    ←
+                </button>
+
+                <h2 id="weekLabel" aria-live="polite">
+                    Wochenansicht
+                </h2>
+
+                <button id="nextWeek" class="icon-btn" type="button"
+                        aria-label="Nächste Woche">
+                    →
+                </button>
+
+                <button id="todayButton" class="btn" type="button">
+                    Heute
+                </button>
+            </div>
+        </header>
+
+        <div class="calendar-filters" role="group" aria-label="Kalender filtern">
+            <label for="calendarProjectFilter">
+                Projekt
+                <select id="calendarProjectFilter">
+                    <option value="">Alle Projekte</option>
+                </select>
+            </label>
+
+            <label for="calendarTypeFilter">
+                Tasktyp
+                <select id="calendarTypeFilter">
+                    <option value="">Alle Typen</option>
+                    <option value="meeting">Meeting</option>
+                    <option value="longTodo">Langes To-Do</option>
+                    <option value="subtask">Teilaufgabe</option>
+                </select>
+            </label>
+        </div>
+
+        <div class="calendar-layout">
+            <section class="calendar-board" aria-label="Wochenkalender">
+                <!-- Datum und Wochentage ergänzt später JavaScript -->
+                <div id="calendarDayHeaders" class="calendar-day-headers"></div>
+
+                <section class="calendar-long-todos"
+                         aria-labelledby="longTodosHeading">
+                    <h3 id="longTodosHeading">Lange To-Dos</h3>
+                    <div id="longTodoBars"></div>
+                </section>
+
+                <!-- Scrollbarer Bereich für die 24 Stunden eines Tages -->
+                <div id="calendarScrollArea" class="calendar-scroll-area">
+                    <div class="calendar-time-grid">
+                        <div id="calendarTimeLabels"
+                             class="calendar-time-labels"
+                             aria-hidden="true"></div>
+
+                        <div id="calendarDays" class="calendar-days"></div>
+                    </div>
+                </div>
+            </section>
+
+            <aside class="card calendar-sidebar"
+                   aria-labelledby="unscheduledHeading">
+                <h2 id="unscheduledHeading">Meine Teilaufgaben einplanen</h2>
+                <p class="muted">
+                    Teilaufgaben ohne Zeitfenster. In dieser Vorschau wird die Planung
+                    beim Neuladen zurückgesetzt.
+                </p>
+                <div id="unscheduledSubtasks"></div>
+            </aside>
+        </div>
+
+        <p id="calendarMessage" role="status" hidden></p>
+    </main>
+
+    <dialog id="calendarScheduleDialog" class="calendar-details"
+        aria-labelledby="calendarScheduleTitle">
+    <h2 id="calendarScheduleTitle">Teilaufgabe einplanen</h2>
+
+    <p id="calendarScheduleTask"></p>
+    <p id="calendarScheduleDeadline"></p>
+
+    <form id="calendarScheduleForm" class="calendar-schedule-form">
+        <label for="calendarScheduleDate">
+            Datum
+            <input id="calendarScheduleDate" type="date" required>
+        </label>
+
+        <label for="calendarScheduleStart">
+            Beginn
+            <input id="calendarScheduleStart" type="time" required>
+        </label>
+
+        <label for="calendarScheduleEnd">
+            Ende
+            <input id="calendarScheduleEnd" type="time" required>
+        </label>
+
+        <p id="calendarScheduleError" class="calendar-schedule-error"
+           role="alert" hidden></p>
+
+        <div id="calendarScheduleConflict" class="calendar-conflict" hidden>
+            <div role="alert">
+                <p>Das gewählte Zeitfenster überschneidet sich mit:</p>
+                <ul id="calendarScheduleConflictList"></ul>
+            </div>
+
+            <label class="calendar-conflict-confirm">
+                <input id="calendarScheduleConflictConfirm" type="checkbox">
+                <span>Trotz Überschneidung einplanen</span>
+            </label>
+        </div>
+
+        <p class="calendar-details-note">
+            Nur Vorschau: keine dauerhafte Speicherung.
+            Überschneidungen werden anhand der vorhandenen Beispieldaten geprüft.
+        </p>
+
+        <div class="calendar-schedule-actions">
+            <button id="calendarScheduleCancel" type="button" class="btn">
+                Abbrechen
+            </button>
+            <button type="submit" class="btn">
+                In Vorschau einplanen
+            </button>
+        </div>
+    </form>
+</dialog>
+
+</body>
+</html>
