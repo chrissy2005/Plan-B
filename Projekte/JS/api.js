@@ -733,7 +733,7 @@ async getMySubtasks(filters = {}) {
     async updateProject(projectId, data) {
       if (USE_MOCK) return mock.updateProject(projectId, data);
       const payload = { 
-        title: data.title,
+        name: data.title,
         description: data.description || '',
         status: toApiStatus(data.status) };
       const raw = await request('PUT', '/projects/' + encodeURIComponent(projectId), payload);
