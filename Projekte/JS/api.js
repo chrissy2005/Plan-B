@@ -1017,8 +1017,8 @@ async getMySubtasks(filters = {}) {
         startDateTime: data.start,
         endDateTime: data.end,
         priority: toApiPriority(data.priority),
-        assignedMemberIds: (data.description || []).map(id => Number(id)).filter(id => Number.isFinite(id)),
-        subtasks: (data.subtaks || []).map(subtask => ({
+        assignedMemberIds: (data.participantIds || []).map(id => Number(id)).filter(id => Number.isFinite(id)),
+        subtasks: (data.subtasks || []).map(subtask => ({
           subtaskId: subtask.id == null ? null : Number(subtask.id),
           title: subtask.title,
           description: subtask.description || '',
