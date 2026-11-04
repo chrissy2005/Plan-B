@@ -122,6 +122,8 @@
     ui.clearFormError(form);
     form.elements.title.value = task.title;
     form.elements.type.value = task.type;
+    form.elements.type.disabled = true;
+    form.elements.type.title = 'Der Typ kann nach dem Anlegen nicht geändert werden.';
     form.elements.priority.value = task.priority;
     form.elements.start.value = ui.fmtInput(task.start);
     form.elements.end.value = ui.fmtInput(task.end);
@@ -151,7 +153,17 @@
     event.preventDefault();
     const form = event.currentTarget;
     ui.clearFormError(form);
-    const type = form.elements.type.value;
+    const original = state.tasks.find(task => task.id === state.editingId);
+    if(!original){
+      ui.showFormError(form, 'Die Aufgabe wurde nicht gefunden.');
+      return;
+    }
+    const selectedType = form.elements.type.value;
+    if(selectedType !== original.type){
+      ui.showFormError(form, 'Der Typ einer bestehenden Aufgabe kann nicht geändert werden.');
+      return;
+    }
+    const type = original.type;
     const title = form.elements.title.value.trim();
     const start = ui.parseInput(form.elements.start.value);
     const end = ui.parseInput(form.elements.end.value);
@@ -167,10 +179,6 @@
     else if (state.picker.isEmpty()) error = 'Bitte mindestens einen Teilnehmer auswählen.';
     else if (subtasks.some(s => !s.title)) error = 'Bitte allen Teilaufgaben einen Titel geben oder leere Teilaufgaben löschen.';
     if (error) { ui.showFormError(form, error); return; }
-
-    const original = state.tasks.find(t => t.id === state.editingId);
-    if (original && original.type === 'LANGES_TODO' && type === 'MEETING' && original.subtasks.length
-      && !window.confirm('Beim Wechsel zu „Meeting“ werden alle Teilaufgaben gelöscht. Fortfahren?')) return;
 
     const data = {
       type,
@@ -233,7 +241,6 @@
       if (button.dataset.action === 'delete') deleteTask(button.dataset.task, button);
     });
     $('#editTaskForm').addEventListener('submit', saveTask);
-    $('#editTaskType').addEventListener('change', event => applyType(event.target.value));
     $('#addSubtaskButton').addEventListener('click', () => state.subtasks && state.subtasks.add());
     $('#deleteTaskButton').addEventListener('click', event => deleteTask(state.editingId, event.currentTarget));
   }

@@ -965,6 +965,7 @@ async getMySubtasks(filters = {}) {
       return request('POST', '/projects/' + encodeURIComponent(projectId) + '/long-todos', payload);
     },
 
+    /* old updateTask-method, that updates every field step by step
     // BACKEND: PUT /tasks/{taskId}  Body = kompletter Task inkl. subtasks -> 200 Task
     // Neue Teilaufgaben haben id = null, das Backend vergibt die IDs.
     async updateTask(taskId, data, type) {
@@ -975,6 +976,57 @@ async getMySubtasks(filters = {}) {
       for (const [attribute, newValue] of updates) {
         await request('PUT', base + encodeURIComponent(taskId), { update: { attribute, newValue } });
       }
+    },
+    */
+
+    //new updateTask-method which sends one JSON
+    async updateTask(taskId, data, type){
+      if(type === 'MEETING'){
+        return api.updateMeeting(taskId, data);
+      }
+      if(type === 'LANGES_TODO'){
+        return api.updateLongToDo(taskId, data);
+      }
+      throw new Error('Unbekannter Task-Typ');
+    },
+
+    //updateMeeting-Method to PUT /meetings/{meetingId}
+    async updateMeeting(meetingId, data){
+      if(USE_MOCK){
+        return mock.updateTask;
+      }
+      const payload = {
+        title: data.title,
+        description: data.description || '',
+        startDateTime: data.start,
+        endDateTime: data.end,
+        participantIds: (data.participantIds).map(id => Number(id)).filter(id => Number.isFinite(id))
+      };
+      console.info('[API] Put meeting update: ', JSON.stringify(payload, null, 2));
+      return request('PUT', '/meetings/'+ encodeURIComponent(meetingId), payload);
+    },
+
+    //updateLongToDo-Method to PUT/long-todos/{longToDoId}
+    async updateLongToDo(longToDoId, data){
+      if(USE_MOCK){
+        return mock.updateTask(longToDoId, data);
+      }
+      const payload = {
+        title: data.title,
+        description: data.description || '',
+        startDateTime: data.start,
+        endDateTime: data.end,
+        priority: toApiPriority(data.priority),
+        assignedMemberIds: (data.description || []).map(id => Number(id)).filter(id => Number.isFinite(id)),
+        subtasks: (data.subtaks || []).map(subtask => ({
+          subtaskId: subtask.id == null ? null : Number(subtask.id),
+          title: subtask.title,
+          description: subtask.description || '',
+          priority: toApiPriority(subtask.priority)
+        }))
+      };
+      console.info('[API] Put long-todo update: ', JSON.stringify(payload, null, 2));
+      return request('PUT', '/long-todos/' + encodeURIComponent(longToDoId), payload);
     },
 
     // BACKEND: DELETE /tasks/{taskId} -> 204
