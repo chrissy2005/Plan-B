@@ -6,9 +6,9 @@
     <title>Kalender | Plan B</title>
 
     <!-- Bestehende Gestaltung und eigene Kalender-Styles -->
-    <link rel="stylesheet" href="/Home/CSS/menu.css">
-    <link rel="stylesheet" href="/Projekte/CSS/projects.css">
-    <link rel="stylesheet" href="../CSS/calendar.css">
+    <link rel="stylesheet" href="/Projekte/CSS/projects.css?v=31">
+    <link rel="stylesheet" href="/Home/CSS/menu.css?v=31">
+    <link rel="stylesheet" href="../CSS/calendar.css?v=31">
 
     <!-- Bestehende API- und Anmeldefunktionen -->
     <script src="/Projekte/JS/offline-db.js" defer></script>
@@ -20,17 +20,27 @@
     <script src="../JS/calendar.js" defer></script>
 </head>
 <body>
-    <nav aria-label="Hauptnavigation">
-        <a href="/Home/HTML/index.html">Home</a>
-        <a href="/Projekte/HTML/projects.html">Projekte</a>
-        <a href="/Benutzer/HTML/user.html">Benutzer</a>
-        <a href="/Kalender/HTML/calender.html"
-           class="active"
-           aria-current="page">Kalender</a>
-        <button id="logout" type="button" onclick="logout()">
-            Abmelden
-        </button>
-    </nav>
+    <header class="topbar">
+        <a class="logo" href="/Home/HTML/index.html" aria-label="Plan B Startseite">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linejoin="round" aria-hidden="true">
+                <path d="M6 22V3h11l-3 4 3 4H6"/>
+            </svg>
+        </a>
+        <nav class="nav" aria-label="Hauptnavigation">
+            <a href="/Home/HTML/index.html">Home</a>
+            <a href="/Projekte/HTML/projects.html">Projekte</a>
+            <a href="/Benutzer/HTML/user.html">Benutzer</a>
+            <a href="/Kalender/HTML/calender.html" aria-current="page">Kalender</a>
+            <a href="/Einladungen/HTML/invitations.html">
+                Einladungen <span class="badge" id="invitationBadge" hidden></span>
+            </a>
+        </nav>
+        <div class="user-area">
+            <span class="user-name" id="currentUserName"></span>
+            <button class="btn" type="button" id="logoutButton">Abmelden</button>
+        </div>
+    </header>
 
 <dialog id="calendarDetails" class="calendar-details"
         aria-labelledby="calendarDetailsTitle">
