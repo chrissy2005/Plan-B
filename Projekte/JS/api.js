@@ -371,6 +371,55 @@
   const api = {
     ApiError,
 
+    /* ---------- Kalender ---------- */
+
+    // Bestehender Backend-Endpunkt: Kalenderwoche laden.
+    async getCalendarWeek(week) {
+      const params = new URLSearchParams({ week });
+      const data = await request('GET', '/calendar?' + params.toString());
+
+      if (
+        !data
+        || !Array.isArray(data.meetings)
+        || !Array.isArray(data.subtasks)
+        || !Array.isArray(data.longToDos)
+      ) {
+        throw new Error('Die Kalenderantwort hat ein ungültiges Format.');
+      }
+
+      return data;
+    },
+
+    // Neue Schnittstelle für Johannes:
+    // Eigene offene Teilaufgaben ohne Zeitfenster, unabhängig von der Woche.
+    // Antwort: { subtasks: [...] }
+    async getCalendarUnscheduledSubtasks() {
+      const data = await request('GET', '/calendar/unscheduled-subtasks');
+
+      if (!data || !Array.isArray(data.subtasks)) {
+        throw new Error(
+          'Die Antwort für ungeplante Teilaufgaben hat ein ungültiges Format.'
+        );
+      }
+
+      return data.subtasks;
+    },
+
+    // Neue Schnittstelle für Johannes:
+    // from/to: ISO-Zeitstempel mit Zeitzonenoffset.
+    // Beide null: Zeitplanung aufheben, Zuweisung beibehalten.
+    async updateSubtaskSchedule(longToDoId, subtaskId, slot) {
+      const path =
+        '/long-todos/' + encodeURIComponent(longToDoId)
+        + '/subtasks/' + encodeURIComponent(subtaskId)
+        + '/schedule';
+
+      return request('PUT', path, {
+        from: slot.from,
+        to: slot.to
+      });
+    },
+
     /*---------------Filterung im Dashboard----------*/
     async getMyDashboardTasks(filters = {}) {
       const [

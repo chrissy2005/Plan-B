@@ -3,107 +3,223 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Kalender</title>
-    <link rel="stylesheet" href="../../Projekte/CSS/projects.css">
+    <title>Kalender | Plan B</title>
+
+    <!-- Bestehende Gestaltung und eigene Kalender-Styles -->
+    <link rel="stylesheet" href="/Home/CSS/menu.css">
+    <link rel="stylesheet" href="/Projekte/CSS/projects.css">
     <link rel="stylesheet" href="../CSS/calendar.css">
-    <script id="googleIdentityScript" src="https://accounts.google.com/gsi/client" async defer></script>
-    <script src="../../Home/JS/menu.js" defer></script>
+
+    <!-- Bestehende API- und Anmeldefunktionen -->
+    <script src="/Projekte/JS/offline-db.js" defer></script>
+    <script src="/Projekte/JS/api.js" defer></script>
+    <script src="/Projekte/JS/ui.js" defer></script>
+    <script src="/Home/JS/menu.js" defer></script>
+
+    <!-- Verhalten der Kalenderansicht -->
     <script src="../JS/calendar.js" defer></script>
 </head>
 <body>
-    <header class="topbar">
-        <a class="logo" href="/Home/HTML/index.html" aria-label="Plan B Startseite">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6 22V3h11l-3 4 3 4H6"/></svg>
-        </a>
-        <nav class="nav" aria-label="Hauptnavigation">
-            <a href="/Home/HTML/index.html">Home</a>
-            <a href="/Projekte/HTML/projects.html">Projekte</a>
-            <a href="/Benutzer/HTML/user.html">Benutzer</a>
-            <a href="/Kalender/HTML/calender.html" aria-current="page">Kalender</a>
-            <a href="/Einladungen/HTML/invitations.html">Einladungen <span class="badge" id="invitationBadge" hidden></span></a>
-        </nav>
-        <div class="user-area">
-            <span class="user-name" id="currentUserName"></span>
-            <button class="btn" type="button" id="logoutButton" onclick="logout()">Abmelden</button>
-        </div>
-    </header>
+    <nav aria-label="Hauptnavigation">
+        <a href="/Home/HTML/index.html">Home</a>
+        <a href="/Projekte/HTML/projects.html">Projekte</a>
+        <a href="/Benutzer/HTML/user.html">Benutzer</a>
+        <a href="/Kalender/HTML/calender.html"
+           class="active"
+           aria-current="page">Kalender</a>
+        <button id="logout" type="button" onclick="logout()">
+            Abmelden
+        </button>
+    </nav>
+
+<dialog id="calendarDetails" class="calendar-details"
+        aria-labelledby="calendarDetailsTitle">
+    <h2 id="calendarDetailsTitle"></h2>
+    <p id="calendarDetailsType"></p>
+
+    <dl>
+        <dt>Zuordnung</dt>
+        <dd id="calendarDetailsContext"></dd>
+
+        <dt>Beginn</dt>
+        <dd id="calendarDetailsStart"></dd>
+
+        <dt>Ende / Frist</dt>
+        <dd id="calendarDetailsEnd"></dd>
+    </dl>
+
+    <p id="calendarDetailsProgress" hidden></p>
+    <p class="calendar-details-note">Vorschau mit Beispieldaten.</p>
+
+    <div id="calendarDetailsActions"
+        class="calendar-schedule-actions"
+        hidden>
+        <button id="calendarEditSchedule" type="button" class="btn">
+            Zeitfenster ändern
+        </button>
+
+        <button id="calendarRemoveSchedule" type="button" class="btn">
+            Planung aufheben
+        </button>
+    </div>
+
+    <form method="dialog">
+        <button type="submit" class="btn" autofocus>Schließen</button>
+    </form>
+</dialog>
 
     <main class="page calendar-page">
-        <div class="page-head">
-            <div>
-                <h1>Google Kalender</h1>
-                <p class="description">
-                    Termine direkt aus deinem Google Kalender laden und neue Termine anlegen.
-                </p>
+        <header class="calendar-header">
+            <h1>Kalender</h1>
+
+            <div class="calendar-navigation">
+                <button id="previousWeek" class="icon-btn" type="button"
+                        aria-label="Vorherige Woche">
+                    ←
+                </button>
+
+                <h2 id="weekLabel" aria-live="polite">
+                    Wochenansicht
+                </h2>
+
+                <button id="nextWeek" class="icon-btn" type="button"
+                        aria-label="Nächste Woche">
+                    →
+                </button>
+
+                <button id="todayButton" class="btn" type="button">
+                    Heute
+                </button>
             </div>
+        </header>
+
+        <ul class="calendar-legend" aria-label="Legende">
+            <li>
+                <span class="calendar-legend-swatch calendar-legend-swatch--long-todo"
+                    aria-hidden="true"></span>
+                Langes To-Do
+            </li>
+            <li>
+                <span class="calendar-legend-swatch calendar-legend-swatch--meeting"
+                    aria-hidden="true"></span>
+                Meeting
+            </li>
+            <li>
+                <span class="calendar-legend-swatch calendar-legend-swatch--subtask"
+                    aria-hidden="true"></span>
+                Teilaufgabe
+            </li>
+        </ul>
+
+        <div class="calendar-filters" role="group" aria-label="Kalender filtern">
+            <label for="calendarProjectFilter">
+                Projekt
+                <select id="calendarProjectFilter">
+                    <option value="">Alle Projekte</option>
+                </select>
+            </label>
+
+            <label for="calendarTypeFilter">
+                Tasktyp
+                <select id="calendarTypeFilter">
+                    <option value="">Alle Typen</option>
+                    <option value="meeting">Meeting</option>
+                    <option value="longTodo">Langes To-Do</option>
+                    <option value="subtask">Teilaufgabe</option>
+                </select>
+            </label>
         </div>
 
-        <section class="card calendar-connection">
-            <h2>Verbindung</h2>
-            <p id="calendarConnectionStatus" role="status">
-                Google-Anmeldung wird vorbereitet …
-            </p>
-            <button id="googleConnect" class="btn btn-primary" type="button">
-                Mit Google Kalender verbinden
-            </button>
-            <button id="googleDisconnect" class="btn" type="button" hidden>
-                Verbindung trennen
-            </button>
-        </section>
+        <div class="calendar-layout">
+            <section class="calendar-board" aria-label="Wochenkalender">
+                <!-- Datum und Wochentage ergänzt später JavaScript -->
+                <div id="calendarDayHeaders" class="calendar-day-headers"></div>
 
-        <div id="calendarMessage" class="page-message" role="alert" hidden></div>
+                <section class="calendar-long-todos"
+                         aria-labelledby="longTodosHeading">
+                    <h3 id="longTodosHeading">Lange To-Dos</h3>
+                    <div id="longTodoBars"></div>
+                </section>
 
-        <section class="card">
-            <div class="section-head">
-                <h2>Termine</h2>
-                <button id="reloadCalendar" class="btn" type="button" disabled>
-                    Alles aktualisieren
-                </button>
-            </div>
-            <div class="table-wrap">
-                <table class="data">
-                    <thead>
-                        <tr>
-                            <th>Termin</th>
-                            <th>Beginn</th>
-                            <th>Ende</th>
-                        </tr>
-                    </thead>
-                    <tbody id="googleEventsBody">
-                        <tr><td colspan="3" class="empty">Bitte zuerst Google verbinden.</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
+                <!-- Scrollbarer Bereich für die 24 Stunden eines Tages -->
+                <div id="calendarScrollArea" class="calendar-scroll-area">
+                    <div class="calendar-time-grid">
+                        <div id="calendarTimeLabels"
+                             class="calendar-time-labels"
+                             aria-hidden="true"></div>
 
-        <section class="card">
-            <h2>Google-Termin erstellen</h2>
-            <form id="googleEventForm" class="calendar-form">
-                <label>
-                    Titel
-                    <input id="eventTitle" class="input" type="text" required maxlength="200">
-                </label>
-                <label>
-                    Beginn
-                    <input id="eventStart" class="input" type="datetime-local" required>
-                </label>
-                <label>
-                    Ende
-                    <input id="eventEnd" class="input" type="datetime-local" required>
-                </label>
-                <label>
-                    Ort
-                    <input id="eventLocation" class="input" type="text" maxlength="200">
-                </label>
-                <label>
-                    Beschreibung
-                    <textarea id="eventDescription" class="input" rows="3" maxlength="2000"></textarea>
-                </label>
-                <button class="btn btn-primary" type="submit" disabled id="createGoogleEvent">
-                    Termin in Google Kalender speichern
-                </button>
-            </form>
-        </section>
+                        <div id="calendarDays" class="calendar-days"></div>
+                    </div>
+                </div>
+            </section>
+
+            <aside class="card calendar-sidebar"
+                   aria-labelledby="unscheduledHeading">
+                <h2 id="unscheduledHeading">Meine Teilaufgaben einplanen</h2>
+                <p class="muted">
+                    Teilaufgaben ohne Zeitfenster. In dieser Vorschau wird die Planung
+                    beim Neuladen zurückgesetzt.
+                </p>
+                <div id="unscheduledSubtasks"></div>
+            </aside>
+        </div>
+
+        <p id="calendarMessage" role="status" hidden></p>
     </main>
+
+    <dialog id="calendarScheduleDialog" class="calendar-details"
+        aria-labelledby="calendarScheduleTitle">
+    <h2 id="calendarScheduleTitle">Teilaufgabe einplanen</h2>
+
+    <p id="calendarScheduleTask"></p>
+    <p id="calendarScheduleDeadline"></p>
+
+    <form id="calendarScheduleForm" class="calendar-schedule-form">
+        <label for="calendarScheduleDate">
+            Datum
+            <input id="calendarScheduleDate" type="date" required>
+        </label>
+
+        <label for="calendarScheduleStart">
+            Beginn
+            <input id="calendarScheduleStart" type="time" required>
+        </label>
+
+        <label for="calendarScheduleEnd">
+            Ende
+            <input id="calendarScheduleEnd" type="time" required>
+        </label>
+
+        <p id="calendarScheduleError" class="calendar-schedule-error"
+           role="alert" hidden></p>
+
+        <div id="calendarScheduleConflict" class="calendar-conflict" hidden>
+            <div role="alert">
+                <p>Das gewählte Zeitfenster überschneidet sich mit:</p>
+                <ul id="calendarScheduleConflictList"></ul>
+            </div>
+
+            <label class="calendar-conflict-confirm">
+                <input id="calendarScheduleConflictConfirm" type="checkbox">
+                <span>Trotz Überschneidung einplanen</span>
+            </label>
+        </div>
+
+        <p class="calendar-details-note">
+            Nur Vorschau: keine dauerhafte Speicherung.
+            Überschneidungen werden anhand der vorhandenen Beispieldaten geprüft.
+        </p>
+
+        <div class="calendar-schedule-actions">
+            <button id="calendarScheduleCancel" type="button" class="btn">
+                Abbrechen
+            </button>
+            <button type="submit" class="btn">
+                In Vorschau einplanen
+            </button>
+        </div>
+    </form>
+</dialog>
+
 </body>
 </html>
