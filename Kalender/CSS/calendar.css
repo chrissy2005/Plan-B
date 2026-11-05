@@ -40,7 +40,7 @@
 
 .calendar-form {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, .9fr) minmax(0, 1.35fr);
     gap: 16px;
     width: 100%;
     max-width: none;
@@ -68,6 +68,12 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: #fff;
+}
+
+.calendar-form input[type="datetime-local"] {
+    min-width: 190px;
+    padding-right: 6px;
+    font-size: 14px;
 }
 
 .calendar-form textarea.input {
@@ -108,7 +114,7 @@
 @media (min-width: 900px) {
     .calendar-page {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
+        grid-template-columns: minmax(0, 1fr) minmax(390px, 430px);
         gap: 18px;
     }
 
