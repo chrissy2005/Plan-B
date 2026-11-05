@@ -5,7 +5,9 @@
     // vom Typ "Webanwendung" angelegt. Es wird kein Client-Secret im Frontend
     // gespeichert.
     const GOOGLE_CLIENT_ID = '152574630222-bn4nmk4s5q8hf7rouol53rcj0lsscc7r.apps.googleusercontent.com';
-    const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
+    // KI-Log Nr. 58: Der vollständige Calendar-Scope ist erforderlich, damit
+    // auch private Kalender gelesen und neue Termine erstellt werden können.
+    const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar';
     const CALENDAR_API = 'https://www.googleapis.com/calendar/v3';
 
     const connectButton = document.querySelector('#googleConnect');
@@ -20,19 +22,23 @@
     let tokenClient = null;
     let accessToken = null;
     let googleReady = false;
+    let loadingEvents = false;
+    let tokenRequestPromise = null;
+    let silentConnectionAttempted = false;
 
     init();
 
     function init() {
         connectButton.addEventListener('click', connectGoogle);
         disconnectButton.addEventListener('click', disconnectGoogle);
-        reloadButton.addEventListener('click', loadEvents);
+        reloadButton.addEventListener('click', () => refreshEverything(false));
         form.addEventListener('submit', createEvent);
         setDefaultEventTimes();
         const googleScript = document.querySelector('#googleIdentityScript');
         googleScript.addEventListener('load', () => {
             googleReady = true;
             statusBox.textContent = 'Bereit für die Google-Anmeldung.';
+            tryRestoreGoogleConnection();
         });
         googleScript.addEventListener('error', () => {
             showMessage('Die Google-Anmeldung konnte nicht geladen werden. Prüfe die Internetverbindung oder blockierende Browser-Erweiterungen.', true);
@@ -41,7 +47,7 @@
         waitForGoogleClient();
     }
 
-    function connectGoogle() {
+    async function connectGoogle() {
         if (!isConfigured()) {
             showMessage(
                 'Bitte zuerst GOOGLE_CLIENT_ID in Kalender/JS/calendar.js eintragen und die OAuth-Weiterleitungs-URI in Google Cloud konfigurieren.',
@@ -57,26 +63,22 @@
 
         // KI-Log Nr. 51: Der Token wird nur im Speicher gehalten und nie in
         // localStorage, sessionStorage oder einem eigenen Backend gespeichert.
-        tokenClient = window.google.accounts.oauth2.initTokenClient({
-            client_id: GOOGLE_CLIENT_ID,
-            scope: CALENDAR_SCOPE,
-            callback: response => {
-                if (response.error || !response.access_token) {
-                    showMessage(formatGoogleAuthError(response), true);
-                    return;
-                }
-                accessToken = response.access_token;
-                setConnectedState(true);
-                loadEvents();
-            },
-            error_callback: error => {
-                showMessage(formatGoogleAuthError(error), true);
+        // KI-Log Nr. 66: Ein stiller Wiederherstellungsversuch darf den
+        // manuellen Login nicht blockieren. Erst den laufenden Versuch
+        // abwarten, danach bewusst einen interaktiven Consent-Token anfordern.
+        if (tokenRequestPromise) {
+            try {
+                await tokenRequestPromise;
+            } catch (error) {
+                // Der manuelle Login startet danach mit prompt=consent neu.
             }
-        });
+        }
         try {
-            tokenClient.requestAccessToken({ prompt: 'consent' });
+            await requestGoogleToken('consent');
+            setConnectedState(true);
+            await loadEvents();
         } catch (error) {
-            showMessage('Google-Anmeldung konnte nicht gestartet werden: ' + error.message, true);
+            showMessage(error.message, true);
         }
     }
 
@@ -87,12 +89,29 @@
                 googleReady = true;
                 statusBox.textContent = 'Bereit für die Google-Anmeldung.';
                 window.clearInterval(timer);
+                tryRestoreGoogleConnection();
             } else if (Date.now() - startedAt > 10000) {
                 window.clearInterval(timer);
                 statusBox.textContent = 'Google-Anmeldung konnte nicht geladen werden.';
                 showMessage('Google Identity Services antwortet nicht. Bitte Seite mit Strg+F5 neu laden.', true);
             }
         }, 100);
+    }
+
+    async function tryRestoreGoogleConnection() {
+        if (silentConnectionAttempted || accessToken || !googleReady) return;
+        silentConnectionAttempted = true;
+        // KI-Log Nr. 65: Nach einem Seitenreload wird kein Access-Token
+        // gespeichert. Google stellt über die bestehende Browser-Anmeldung
+        // still einen neuen, kurzlebigen Token aus, sofern die Freigabe noch
+        // gültig ist.
+        try {
+            await requestGoogleToken('');
+            setConnectedState(true);
+            await loadEvents();
+        } catch (error) {
+            statusBox.textContent = 'Bitte mit Google Kalender verbinden.';
+        }
     }
 
     function formatGoogleAuthError(error) {
@@ -113,33 +132,175 @@
         }
         accessToken = null;
         setConnectedState(false);
-        eventsBody.innerHTML = '<tr><td colspan="4" class="empty">Bitte zuerst Google verbinden.</td></tr>';
+        eventsBody.innerHTML = '<tr><td colspan="3" class="empty">Bitte zuerst Google verbinden.</td></tr>';
+    }
+
+    async function refreshEverything(isAutomatic) {
+        if (loadingEvents) return;
+        // KI-Log Nr. 59: Der Aktualisieren-Button fordert vor dem vollständigen
+        // Neuaufbau der Tabelle einen frischen Google-Token an. Dadurch werden
+        // neue private Termine nach einer Änderung zuverlässig berücksichtigt.
+        if (!googleReady) {
+            showMessage('Die Google-Anmeldung wird noch geladen. Bitte erneut versuchen.', true);
+            return;
+        }
+        try {
+            setLoadingState(true);
+            showMessage('Google-Kalender werden vollständig neu geladen …', false);
+            // KI-Log Nr. 64: Bei einem manuellen Reload wird der vorhandene
+            // Token sofort wiederverwendet. Dadurch startet der Klick direkt
+            // mit dem Kalender-GET statt jedes Mal auf OAuth zu warten.
+            if (!accessToken) {
+                await requestGoogleToken(isAutomatic ? '' : 'consent');
+            }
+            setConnectedState(true);
+            // KI-Log Nr. 63: Vor jedem manuellen Voll-Reload wird die alte
+            // Anzeige entfernt. So bleiben gelöschte Google-Termine nicht
+            // versehentlich in der Tabelle stehen.
+            eventsBody.innerHTML = '<tr><td colspan="3" class="empty">Kalender werden vollständig neu geladen …</td></tr>';
+            await loadEvents();
+        } catch (error) {
+            showMessage(error.message, true);
+        } finally {
+            setLoadingState(false);
+        }
+
+    }
+
+    function requestGoogleToken(prompt) {
+        if (tokenRequestPromise) return tokenRequestPromise;
+        tokenRequestPromise = new Promise((resolve, reject) => {
+            if (!googleReady || !window.google || !window.google.accounts || !window.google.accounts.oauth2) {
+                reject(new Error('Google-Anmeldung ist noch nicht bereit.'));
+                return;
+            }
+            tokenClient = window.google.accounts.oauth2.initTokenClient({
+                client_id: GOOGLE_CLIENT_ID,
+                scope: CALENDAR_SCOPE,
+                callback: response => {
+                    if (response.error || !response.access_token) {
+                        reject(new Error(formatGoogleAuthError(response)));
+                        return;
+                    }
+                    accessToken = response.access_token;
+                    resolve();
+                },
+                error_callback: error => reject(new Error(formatGoogleAuthError(error)))
+            });
+            try {
+                tokenClient.requestAccessToken({ prompt });
+            } catch (error) {
+                reject(new Error('Google-Anmeldung konnte nicht gestartet werden: ' + error.message));
+            }
+        }).finally(() => {
+            tokenRequestPromise = null;
+        });
+        return tokenRequestPromise;
     }
 
     async function loadEvents() {
-        if (!accessToken) return;
+        if (!accessToken || loadingEvents) return;
+        loadingEvents = true;
+        setLoadingState(true);
         showMessage('Google-Termine werden geladen …', false);
         try {
             // KI-Log Nr. 52: Beim Öffnen und bei jeder Aktualisierung werden
             // Termine direkt per GET aus Google Calendar geladen.
+            // KI-Log Nr. 56: Auch bereits begonnene private Google-Termine
+            // werden geladen, damit die Belegt-Zeiten vollständig sind.
             const from = new Date();
-            const to = new Date(from);
-            to.setDate(to.getDate() + 90);
-            const query = new URLSearchParams({
-                timeMin: from.toISOString(),
-                timeMax: to.toISOString(),
-                singleEvents: 'true',
-                orderBy: 'startTime',
-                maxResults: '250'
-            });
-            const response = await calendarRequest(
-                '/calendars/primary/events?' + query.toString(),
-                { method: 'GET' }
+            from.setDate(from.getDate() - 90);
+            const to = new Date();
+            to.setDate(to.getDate() + 365);
+            // KI-Log Nr. 57: Alle Kalender des angemeldeten Google-Kontos
+            // werden abgefragt, damit private Kalender neben "primary"
+            // ebenfalls in den Belegt-Zeiten erscheinen.
+            const calendars = await loadCalendars();
+            const eventGroups = (
+                await Promise.all(
+                    calendars.map(calendar =>
+                        loadCalendarEventsSafely(calendar.id, from, to)
+                    )
+                )
             );
-            renderEvents(response.items || []);
+            const events = eventGroups.flat();
+            renderEvents(events);
             hideMessage();
         } catch (error) {
             showMessage(error.message, true);
+        } finally {
+            loadingEvents = false;
+            setLoadingState(false);
+        }
+
+        async function loadCalendars() {
+            const calendars = [];
+            let pageToken = null;
+
+            do {
+                const query = new URLSearchParams({
+                    minAccessRole: 'reader',
+                    showDeleted: 'false',
+                    maxResults: '250'
+                });
+                if (pageToken) {
+                    query.set('pageToken', pageToken);
+                }
+
+                const response = await calendarRequest(
+                    '/users/me/calendarList?' + query.toString(),
+                    { method: 'GET' }
+                );
+                calendars.push(...(response.items || []));
+                pageToken = response.nextPageToken || null;
+            } while (pageToken);
+
+            return calendars.length
+                ? calendars.filter(calendar =>
+                    ['owner', 'writer', 'reader'].includes(calendar.accessRole)
+                )
+                : [{ id: 'primary' }];
+        }
+
+        async function loadCalendarEventsSafely(calendarId, from, to) {
+            try {
+                return await loadAllEvents(calendarId, from, to);
+            } catch (error) {
+                if (error.status === 401) {
+                    throw error;
+                }
+                console.warn('[Google Calendar] Kalender konnte nicht geladen werden:', calendarId, error.message);
+                return [];
+            }
+        }
+
+        async function loadAllEvents(calendarId, from, to) {
+            const events = [];
+            let pageToken = null;
+
+            do {
+                const query = new URLSearchParams({
+                    timeMin: from.toISOString(),
+                    timeMax: to.toISOString(),
+                    singleEvents: 'true',
+                    orderBy: 'startTime',
+                    showDeleted: 'false',
+                    maxResults: '250'
+                });
+                if (pageToken) {
+                    query.set('pageToken', pageToken);
+                }
+
+                const response = await calendarRequest(
+                    '/calendars/' + encodeURIComponent(calendarId) +
+                    '/events?' + query.toString(),
+                    { method: 'GET' }
+                );
+                events.push(...(response.items || []));
+                pageToken = response.nextPageToken || null;
+            } while (pageToken);
+
+            return events.map(event => ({ ...event, calendarId }));
         }
     }
 
@@ -179,9 +340,10 @@
         }
     }
 
-    async function calendarRequest(path, options) {
+    async function calendarRequest(path, options, retryAfterUnauthorized = true) {
         const response = await fetch(CALENDAR_API + path, {
             method: options.method,
+            cache: 'no-store',
             headers: {
                 Accept: 'application/json',
                 Authorization: 'Bearer ' + accessToken,
@@ -193,26 +355,45 @@
         if (!response.ok) {
             if (response.status === 401) {
                 setConnectedState(false);
+                if (retryAfterUnauthorized) {
+                    // KI-Log Nr. 60: Bei abgelaufenem Token wird einmal
+                    // automatisch still neu autorisiert und die Anfrage
+                    // anschließend exakt wiederholt.
+                    await requestGoogleToken('');
+                    setConnectedState(true);
+                    return calendarRequest(path, options, false);
+                }
             }
             const detail = data && data.error && data.error.message;
-            throw new Error(detail || 'Google Calendar antwortet mit HTTP ' + response.status + '.');
+            const error = new Error(
+                detail || 'Google Calendar antwortet mit HTTP ' + response.status + '.'
+            );
+            error.status = response.status;
+            throw error;
         }
         return data;
     }
 
     function renderEvents(events) {
         if (!events.length) {
-            eventsBody.innerHTML = '<tr><td colspan="4" class="empty">Keine Termine in den nächsten 90 Tagen.</td></tr>';
+            eventsBody.innerHTML = '<tr><td colspan="3" class="empty">Keine Google-Termine im geladenen Zeitraum.</td></tr>';
             return;
         }
-        eventsBody.innerHTML = events.map(item => {
+        const uniqueEvents = Array.from(
+            new Map(
+                events.map(item => [
+                    (item.calendarId || '') + ':' + item.id,
+                    item
+                ])
+            ).values()
+        );
+        eventsBody.innerHTML = uniqueEvents.map(item => {
             const start = item.start.dateTime || item.start.date;
             const end = item.end.dateTime || item.end.date;
             return `<tr>
-                <td>${escapeHtml(item.summary || '(Ohne Titel)')}</td>
+                <td>belegt</td>
                 <td>${formatDate(start)}</td>
                 <td>${formatDate(end)}</td>
-                <td>${escapeHtml(item.location || '–')}</td>
             </tr>`;
         }).join('');
     }
@@ -223,6 +404,13 @@
         disconnectButton.hidden = !connected;
         reloadButton.disabled = !connected;
         createButton.disabled = !connected;
+    }
+
+    function setLoadingState(loading) {
+        reloadButton.disabled = loading || !accessToken;
+        createButton.disabled = loading || !accessToken;
+        connectButton.disabled = loading;
+        disconnectButton.disabled = loading;
     }
 
     function setDefaultEventTimes() {

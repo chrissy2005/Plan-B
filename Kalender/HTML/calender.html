@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Google Kalender</title>
-    <link rel="stylesheet" href="../../Home/CSS/menu.css">
     <link rel="stylesheet" href="../../Projekte/CSS/projects.css">
     <link rel="stylesheet" href="../CSS/calendar.css">
     <script id="googleIdentityScript" src="https://accounts.google.com/gsi/client" async defer></script>
@@ -12,13 +11,22 @@
     <script src="../JS/calendar.js" defer></script>
 </head>
 <body>
-    <nav>
-        <a href="/Home/HTML/index.html">Home</a>
-        <a href="/Projekte/HTML/projects.html">Projekte</a>
-        <a href="/Benutzer/HTML/user.html">Benutzer</a>
-        <a href="/Kalender/HTML/calender.html">Kalender</a>
-        <button id="logout" onclick="logout()">Abmelden</button>
-    </nav>
+    <header class="topbar">
+        <a class="logo" href="/Home/HTML/index.html" aria-label="Plan B Startseite">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6 22V3h11l-3 4 3 4H6"/></svg>
+        </a>
+        <nav class="nav" aria-label="Hauptnavigation">
+            <a href="/Home/HTML/index.html">Home</a>
+            <a href="/Projekte/HTML/projects.html">Projekte</a>
+            <a href="/Benutzer/HTML/user.html">Benutzer</a>
+            <a href="/Kalender/HTML/calender.html" aria-current="page">Kalender</a>
+            <a href="/Einladungen/HTML/invitations.html">Einladungen <span class="badge" id="invitationBadge" hidden></span></a>
+        </nav>
+        <div class="user-area">
+            <span class="user-name" id="currentUserName"></span>
+            <button class="btn" type="button" id="logoutButton" onclick="logout()">Abmelden</button>
+        </div>
+    </header>
 
     <main class="page calendar-page">
         <div class="page-head">
@@ -49,7 +57,7 @@
             <div class="section-head">
                 <h2>Termine</h2>
                 <button id="reloadCalendar" class="btn" type="button" disabled>
-                    Aktualisieren
+                    Alles aktualisieren
                 </button>
             </div>
             <div class="table-wrap">
@@ -59,11 +67,10 @@
                             <th>Termin</th>
                             <th>Beginn</th>
                             <th>Ende</th>
-                            <th>Ort</th>
                         </tr>
                     </thead>
                     <tbody id="googleEventsBody">
-                        <tr><td colspan="4" class="empty">Bitte zuerst Google verbinden.</td></tr>
+                        <tr><td colspan="3" class="empty">Bitte zuerst Google verbinden.</td></tr>
                     </tbody>
                 </table>
             </div>

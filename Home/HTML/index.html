@@ -1,10 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <link rel="stylesheet" href="../CSS/menu.css">
+    <title>Dashboard · Plan B</title>
+    <link rel="stylesheet" href="../../Projekte/CSS/projects.css?v=31">
+    <link rel="stylesheet" href="../CSS/menu.css?v=31">
+    <link rel="stylesheet" href="../CSS/home.css?v=31">
     <script src="/Projekte/JS/offline-db.js" defer></script>
     <script src="/Projekte/JS/api.js" defer></script>
     <script src="/Projekte/JS/ui.js" defer></script>
@@ -13,20 +15,28 @@
 </head>
 <body>
 
-    <nav>
-            <a href="index.html">Home</a>
-            <!-- KI-Log Nr. 49: Root-relative Links verhindern falsche Unterordner-Pfade auf Heroku. -->
+    <header class="topbar">
+        <a class="logo" href="index.html" aria-label="Plan B Startseite">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6 22V3h11l-3 4 3 4H6"/></svg>
+        </a>
+        <nav class="nav" aria-label="Hauptnavigation">
+            <a href="index.html?v=31" aria-current="page">Home</a>
             <a href="/Projekte/HTML/projects.html">Projekte</a>
             <a href="/Benutzer/HTML/user.html">Benutzer</a>
             <a href="/Kalender/HTML/calender.html">Kalender</a>
-            <button id="logout" onclick="logout()">Abmelden</button> <!--KI-Log Nr. 21-->
-    </nav>
+            <a href="/Einladungen/HTML/invitations.html">Einladungen <span class="badge" id="invitationBadge" hidden></span></a>
+        </nav>
+        <div class="user-area">
+            <span class="user-name" id="currentUserName"></span>
+            <button class="btn" type="button" id="logoutButton">Abmelden</button>
+        </div>
+    </header>
 
     <main class="page dashboard-page">
-    <section class="projects-col">
+    <section class="dashboard-content" aria-labelledby="dashboardTitle">
         <div class="page-head">
             <div>
-                <h1>Meine To-Do's</h1>
+                <h1 id="dashboardTitle">Meine To-Do's</h1>
                 <p class="description">
                     Alle dir zugewiesenen Meetings, Long-To-dos
                     und Untertasks aus deinen Projekten.
@@ -34,7 +44,9 @@
             </div>
         </div>
 
-        <form id="dashboardFilters" class="card filters-card">
+        <details class="card filters-card" open>
+            <summary>Filter anzeigen</summary>
+        <form id="dashboardFilters">
             <div class="grid-2">
                 <div class="field">
                     <label for="dashboardFrom">
@@ -98,6 +110,7 @@
             </button>
             
         </form>
+        </details>
 
         <div
             id="dashboardMessage"
@@ -106,7 +119,7 @@
             hidden
         ></div>
 
-        <section>
+        <section class="dashboard-table-card card">
             <div class="section-head">
                 <h2>Offene Aufgaben</h2>
             </div>
@@ -129,7 +142,7 @@
             </div>
         </section>
 
-        <section>
+        <section class="dashboard-table-card card">
             <div class="section-head">
                 <h2>Erledigt – letzte 7 Tage</h2>
             </div>
