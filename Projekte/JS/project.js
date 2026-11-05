@@ -688,12 +688,26 @@
     await ui.withBusy(button, async () => {
       try {
         // BACKEND: POST /availability  { userIds, start, end }  (Daten aus dem externen Kalender)
-        const result = await api.checkAvailability({ userIds, start: times.start, end: times.end });
-        $('#availabilityRows').innerHTML = result.map(r => `
-          <div class="availability-row">
-            <span>${esc(r.name)}</span>
-            ${r.free ? '<span>frei</span>' : `<span class="conflict">Konflikt: belegt ${esc(ui.fmtTime(r.busyFrom))}–${esc(ui.fmtTime(r.busyTo))}</span>`}
-          </div>`).join('');
+        const result = await api.checkAvailability(projectId, { userIds, start: times.start, end: times.end });
+        const unavailableMembers = result.unavailableMembers || [];
+        if(result.available){
+          $('#availabilityRows').innerHTML = `
+          <p class="availability-row">
+            Alle Mitglieder sind verfügbar.
+          </p>
+          `;
+        } else {
+          $('#availabilityRows').innerHTML = unavailableMembers.map(member => `
+            <div class="availability-row">
+              <span class="conflict">
+                Mitglied <strong>${esc(member.name)}</strong>
+                ist nicht verfügbar.
+              </span>
+            </div>
+            `
+          )
+          .join('');
+        }
       } catch (error) {
         ui.showFormError(form, error.message);
       }
