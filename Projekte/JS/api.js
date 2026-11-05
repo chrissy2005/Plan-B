@@ -66,6 +66,34 @@
     return error instanceof ApiError && (error.status === 0 || error.status >= 500);
   }
 
+  function toOffsetDateTime(value){
+    const text = String(value || '').trim();
+    if(!text){
+      return null;
+    }
+    if(/[zZ][+-]\d{2}:\d{2}$/.test(text)){
+      return text;
+    }
+
+    const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(text);
+    if(!match){
+      return text;
+    }
+
+    const date = new Date(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes));
+    if(Number.isNaN(date.getTime())){
+      return text;
+    }
+
+    const pad = number => String(number).padStart(2, '0');
+    const offsetMinutes = -date.getTimezoneOffset();
+    const sign = offsetMinutes >= 0 ? '+' : '-';
+    const absoluteOffset = Math.abs(offsetMinutes);
+    const offsetHours = pad(Math.floor(absoluteOffset / 60));
+    const offsetRestMinutes = pad(absoluteOffset % 60);
+    return `${text}:00${sign}${offsetHours}:${offsetRestMinutes}`;
+  }
+
   const DEFAULT_MESSAGES = {
     400: 'Die Eingaben sind ungültig.',
     403: 'Dafür fehlt dir die Berechtigung.',
@@ -1098,10 +1126,27 @@ async getMySubtasks(filters = {}) {
     /* ---------- Verfuegbarkeit (Kalender) ---------- */
 
     // BACKEND: POST /availability  Body { userIds, start, end }
-    // -> [{ userId, name, free, busyFrom, busyTo }]  (Daten aus dem externen Kalender)
-    checkAvailability(data) {
-      if (USE_MOCK) return mock.checkAvailability(data);
-      return request('POST', '/availability', data);
+    // -> [{ available, unavailableMembers[] }]  (Daten aus dem Backend)
+    checkAvailability(projectId, data) {
+      const payload = {
+        userIds: (data.userIds || []).map(id => Number(id)).filter(id => Number.isFinite(id)),
+        start: toOffsetDateTime(data.start),
+        end: toOffsetDateTime(data.end)
+      };
+      if (USE_MOCK) return mock.checkAvailability(payload);
+      const raw = request('POST', '/projects/' + encodeURIComponent(projectId) + '/availability', payload);
+      console.info('[Availabilty] Response JSON:', JSON.stringify(raw, null, 2));
+      const result = raw && (raw.data || raw);
+
+      return {
+        available: Boolean(result && result.available),
+        unavailableMembers: Array.isArray(result && result.unavailableMembers)
+          ? result.unavailableMembers.map(member => ({
+            userId: Number(member.userId),
+            name: member.name || 'Unbekanntes Mitglied'
+          }))
+          : []
+      };
     },
 
     // Nur fuer Tests: Testdaten zuruecksetzen
