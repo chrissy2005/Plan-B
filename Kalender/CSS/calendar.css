@@ -22,6 +22,24 @@
     gap: 12px;
 }
 
+.calendar-sync-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: -8px 0 20px;
+}
+
+.calendar-sync-status {
+    margin-right: auto;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.calendar-sync-status.is-error {
+    color: #b3261e;
+}
+
 #weekLabel {
     min-width: 230px;
     text-align: center;
@@ -227,6 +245,16 @@
 .calendar-event--subtask {
     background: #fff;
     border-left: 4px solid #6f5b63;
+}
+
+.calendar-event--external {
+    background: #4b4b4b;
+    border-color: #3a3a3a;
+    color: #fff;
+}
+
+.calendar-event--external .calendar-event-context {
+    color: #e8e8e8;
 }
 
 .calendar-event-title,
@@ -507,4 +535,9 @@
 .calendar-legend-swatch--subtask {
     border-left: 4px solid #6f5b63;
     background: #fff;
+}
+
+.calendar-legend-swatch--external {
+    border-color: #3a3a3a;
+    background: #4b4b4b;
 }

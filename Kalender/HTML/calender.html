@@ -15,6 +15,8 @@
     <script src="/Projekte/JS/api.js" defer></script>
     <script src="/Projekte/JS/ui.js" defer></script>
     <script src="/Home/JS/menu.js" defer></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="../JS/google-calendar-sync.js?v=32" defer></script>
 
     <!-- Verhalten der Kalenderansicht -->
     <script src="../JS/calendar.js" defer></script>
@@ -103,6 +105,21 @@
             </div>
         </header>
 
+        <div class="calendar-sync-controls" role="group" aria-label="Externer Kalender">
+            <span id="googleSyncStatus" class="calendar-sync-status">
+                Externer Kalender nicht verbunden
+            </span>
+            <button id="googleConnect" class="btn" type="button">
+                Synchronisieren
+            </button>
+            <button id="reloadCalendar" class="btn" type="button">
+                Aktualisieren
+            </button>
+            <button id="googleDisconnect" class="btn" type="button" hidden>
+                Verbindung trennen
+            </button>
+        </div>
+
         <ul class="calendar-legend" aria-label="Legende">
             <li>
                 <span class="calendar-legend-swatch calendar-legend-swatch--long-todo"
@@ -119,16 +136,14 @@
                     aria-hidden="true"></span>
                 Teilaufgabe
             </li>
+            <li>
+                <span class="calendar-legend-swatch calendar-legend-swatch--external"
+                    aria-hidden="true"></span>
+                Belegt (externer Kalender)
+            </li>
         </ul>
 
         <div class="calendar-filters" role="group" aria-label="Kalender filtern">
-            <label for="calendarProjectFilter">
-                Projekt
-                <select id="calendarProjectFilter">
-                    <option value="">Alle Projekte</option>
-                </select>
-            </label>
-
             <label for="calendarTypeFilter">
                 Tasktyp
                 <select id="calendarTypeFilter">

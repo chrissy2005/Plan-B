@@ -109,6 +109,7 @@
     // Daten, mit denen die Kalenderansicht arbeitet.
     // Im Echtbetrieb werden diese Listen durch API-Antworten gefüllt.
     let calendarEvents = isDemoMode ? demoEvents : [];
+    let externalCalendarEvents = [];
     let calendarLongTodos = isDemoMode ? demoLongTodos : [];
     let calendarSubtasks = isDemoMode ? demoUnscheduledSubtasks : [];
 
@@ -261,7 +262,6 @@
             "previousWeek",
             "nextWeek",
             "todayButton",
-            "calendarProjectFilter",
             "calendarTypeFilter"
         ].forEach(id => {
             document.getElementById(id).disabled = loading;
@@ -275,7 +275,6 @@
         message.hidden = false;
 
         if (isDemoMode) {
-            initializeProjectFilter();
             renderWeek();
 
             message.textContent =
@@ -303,10 +302,10 @@
             "Teilaufgaben werden geladen …";
 
         try {
-            const [weekData, unscheduledData] = await Promise.all([
-                window.PlanBApi.getCalendarWeek(requestedWeek),
-                window.PlanBApi.getCalendarUnscheduledSubtasks()
-            ]);
+            // KI-Log Nr. 69: Der aktuelle Backend-Vertrag liefert alle
+            // Kalenderdaten über GET /calendar. Der gesperrte Zusatz-Endpunkt
+            // /calendar/unscheduled-subtasks wird nicht mehr aufgerufen.
+            const weekData = await window.PlanBApi.getCalendarWeek(requestedWeek);
 
             // Eine inzwischen gestartete neuere Anfrage hat Vorrang.
             if (loadVersion !== calendarLoadVersion) {
@@ -314,19 +313,9 @@
             }
 
             const mappedWeek = mapCalendarWeek(weekData);
-            const unscheduledTasks =
-                unscheduledData.map(mapCalendarSubtask);
-
-            // Dieser Endpunkt soll ausschließlich offene,
-            // noch nicht eingeplante eigene Teilaufgaben liefern.
-            if (unscheduledTasks.some(task =>
-                task.start !== null || task.end !== null || task.done
-            )) {
-                throw new Error(
-                    "Die Antwort für ungeplante Teilaufgaben enthält "
-                    + "bereits geplante oder erledigte Aufgaben."
-                );
-            }
+            const unscheduledTasks = mappedWeek.subtasks.filter(task =>
+                task.start === null && task.end === null && !task.done
+            );
 
             // Jede Teilaufgabe darf nur einmal in den Listen vorkommen.
             const subtasks = [
@@ -342,11 +331,10 @@
                 );
             }
 
-            calendarEvents = mappedWeek.events;
+            calendarEvents = [...mappedWeek.events, ...externalCalendarEvents];
             calendarLongTodos = mappedWeek.longTodos;
             calendarSubtasks = subtasks;
 
-            initializeProjectFilter();
             renderWeek();
 
             message.textContent = "Kalenderdaten geladen.";
@@ -357,7 +345,7 @@
 
             console.error("Kalender konnte nicht geladen werden:", error);
 
-            calendarEvents = [];
+            calendarEvents = externalCalendarEvents;
             calendarLongTodos = [];
             calendarSubtasks = [];
             renderWeek();
@@ -887,56 +875,13 @@ function renderLongTodos(longTodos) {
         dialog.showModal();
     }
 
-    function initializeProjectFilter() {
-        const select = document.getElementById("calendarProjectFilter");
-
-        const previousValue = select.value;
-        const previousLabel =
-            select.selectedOptions[0]?.textContent || previousValue;
-
-        const projects = new Map();
-
-        for (const item of [
-            ...calendarEvents,
-            ...calendarLongTodos,
-            ...calendarSubtasks
-        ]) {
-            if (item.projectId != null && item.projectId !== "") {
-                projects.set(String(item.projectId), item.projectName);
-            }
-        }
-
-        // Gewähltes Projekt behalten, auch wenn es in der neuen Woche
-        // keine Einträge besitzt.
-        if (previousValue && !projects.has(previousValue)) {
-            projects.set(previousValue, previousLabel);
-        }
-
-        select.replaceChildren(new Option("Alle Projekte", ""));
-
-        const sortedProjects = [...projects.entries()].sort(
-            (first, second) =>
-                String(first[1]).localeCompare(String(second[1]), "de")
-        );
-
-        for (const [id, name] of sortedProjects) {
-            select.append(new Option(name || "Unbenanntes Projekt", id));
-        }
-
-        select.value = previousValue;
-    }
-
     function matchesCalendarFilters(item) {
-        const projectId =
-            document.getElementById("calendarProjectFilter").value;
-
         const type =
             document.getElementById("calendarTypeFilter").value;
 
-        const matchesProject = !projectId || item.projectId === projectId;
         const matchesType = !type || item.type === type;
 
-        return matchesProject && matchesType;
+        return matchesType;
     }
 
     function renderUnscheduledSubtasks() {
@@ -1315,6 +1260,25 @@ function renderLongTodos(longTodos) {
     }
 
     renderTimeLabels();
+    document.getElementById("reloadCalendar").addEventListener(
+        "click",
+        () => void loadCalendar()
+    );
+    document.addEventListener("planb:google-busy-updated", event => {
+        externalCalendarEvents = (event.detail || []).map((period, index) => ({
+            id: `google-busy-${index}-${period.start}`,
+            type: "external",
+            projectId: "",
+            projectName: "",
+            title: "belegt",
+            context: "Externer Kalender",
+            start: new Date(period.start),
+            end: new Date(period.end)
+        }));
+        calendarEvents = calendarEvents.filter(item => item.type !== "external")
+            .concat(externalCalendarEvents);
+        renderWeek();
+    });
     void loadCalendar();
     requestAnimationFrame(scrollToMorning);
 })();
