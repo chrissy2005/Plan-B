@@ -692,14 +692,14 @@
         const unavailableMembers = result.unavailableMembers || [];
         if(result.available){
           $('#availabilityRows').innerHTML = `
-          <p class="availability-success">
+          <p class="availability-row">
             Alle Mitglieder sind verfügbar.
           </p>
           `;
         } else {
           $('#availabilityRows').innerHTML = unavailableMembers.map(member => `
-            <div class="availability-row available-conflict">
-              <span>
+            <div class="availability-row">
+              <span class="conflict">
                 Mitglied <strong>${esc(member.name)}</strong>
                 ist nicht verfügbar.
               </span>

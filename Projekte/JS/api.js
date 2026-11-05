@@ -80,6 +80,14 @@
       return text;
     }
 
+    const [
+      ,
+      year,
+      month,
+      day,
+      hours,
+      minutes
+    ] = match;
     const date = new Date(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes));
     if(Number.isNaN(date.getTime())){
       return text;
@@ -1127,14 +1135,14 @@ async getMySubtasks(filters = {}) {
 
     // BACKEND: POST /availability  Body { userIds, start, end }
     // -> [{ available, unavailableMembers[] }]  (Daten aus dem Backend)
-    checkAvailability(projectId, data) {
+    async checkAvailability(projectId, data) {
       const payload = {
         userIds: (data.userIds || []).map(id => Number(id)).filter(id => Number.isFinite(id)),
         start: toOffsetDateTime(data.start),
         end: toOffsetDateTime(data.end)
       };
       if (USE_MOCK) return mock.checkAvailability(payload);
-      const raw = request('POST', '/projects/' + encodeURIComponent(projectId) + '/availability', payload);
+      const raw = await request('POST', '/projects/' + encodeURIComponent(projectId) + '/availability', payload);
       console.info('[Availabilty] Response JSON:', JSON.stringify(raw, null, 2));
       const result = raw && (raw.data || raw);
 
