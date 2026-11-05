@@ -1,6 +1,10 @@
 (() => {
     "use strict";
 
+    const isDemoMode =
+    ["localhost", "127.0.0.1"].includes(window.location.hostname)
+    && window.location.pathname === "/Kalender/HTML/calender.html"
+    && new URLSearchParams(window.location.search).get("demo") === "1";
     const dayHeaders = document.getElementById("calendarDayHeaders");
     const timeLabels = document.getElementById("calendarTimeLabels");
     const calendarDays = document.getElementById("calendarDays");
@@ -22,92 +26,461 @@
     let currentMonday = getMonday(new Date());
 
     // Vorübergehende Beispieldaten, keine Daten aus dem Backend.
-// Die Termine gehören zur aktuellen Woche beim Öffnen der Seite.
-const demoMonday = getMonday(new Date());
+    // Die Termine gehören zur aktuellen Woche beim Öffnen der Seite.
+    const demoMonday = getMonday(new Date());
 
-function demoDate(dayOffset, hour, minute = 0) {
-    const date = addDays(demoMonday, dayOffset);
-    date.setHours(hour, minute, 0, 0);
-    return date;
-}
-
-const demoEvents = [
-    {
-        type: "meeting",
-        projectId: "demo-website",
-        projectName: "Website",
-        title: "Beispiel: Sprint Planning",
-        context: "Meeting · Website",
-        start: demoDate(0, 9),
-        end: demoDate(0, 10)
-    },
-    {
-        type: "subtask",
-        projectId: "demo-website",
-        projectName: "Website",
-        title: "Beispiel: Startseite zeichnen",
-        context: "Teilaufgabe · Wireframes überarbeiten · Website",
-        start: demoDate(2, 11),
-        end: demoDate(2, 12, 30)
+    function demoDate(dayOffset, hour, minute = 0) {
+        const date = addDays(demoMonday, dayOffset);
+        date.setHours(hour, minute, 0, 0);
+        return date;
     }
-];
 
-const demoLongTodos = [
-    {
-        type: "longTodo",
-        projectId: "demo-website",
-        projectName: "Website",
-        title: "Beispiel: Wireframes überarbeiten",
-        start: demoDate(0, 8),
-        end: demoDate(2, 18),
-        completedSubtasks: 1,
-        totalSubtasks: 3
-    },
-    {
-        type: "longTodo",
-        projectId: "demo-calendar",
-        projectName: "Kalenderintegration",
-        title: "Beispiel: Kalender-Sync testen",
-        start: demoDate(3, 8),
-        end: demoDate(8, 18),
-        completedSubtasks: 0,
-        totalSubtasks: 2
+    const demoEvents = [
+        {
+            type: "meeting",
+            projectId: "demo-website",
+            projectName: "Website",
+            title: "Beispiel: Sprint Planning",
+            context: "Meeting · Website",
+            start: demoDate(0, 9),
+            end: demoDate(0, 10)
+        },
+        {
+            type: "subtask",
+            projectId: "demo-website",
+            projectName: "Website",
+            title: "Beispiel: Startseite zeichnen",
+            context: "Teilaufgabe · Wireframes überarbeiten · Website",
+            start: demoDate(2, 11),
+            end: demoDate(2, 12, 30)
+        }
+    ];
+
+    const demoLongTodos = [
+        {
+            type: "longTodo",
+            projectId: "demo-website",
+            projectName: "Website",
+            title: "Beispiel: Wireframes überarbeiten",
+            start: demoDate(0, 8),
+            end: demoDate(2, 18),
+            completedSubtasks: 1,
+            totalSubtasks: 3
+        },
+        {
+            type: "longTodo",
+            projectId: "demo-calendar",
+            projectName: "Kalenderintegration",
+            title: "Beispiel: Kalender-Sync testen",
+            start: demoDate(3, 8),
+            end: demoDate(8, 18),
+            completedSubtasks: 0,
+            totalSubtasks: 2
+        }
+    ];
+
+    const demoUnscheduledSubtasks = [
+        {
+            id: "demo-subtask-mobile",
+            type: "subtask",
+            projectId: "demo-website",
+            projectName: "Website",
+            title: "Beispiel: Mobile Ansicht prüfen",
+            context: "Teilaufgabe · Wireframes überarbeiten · Website",
+            earliestStart: demoDate(0, 8),
+            deadline: demoDate(2, 18),
+            start: null,
+            end: null
+        },
+        {
+            id: "demo-subtask-sync",
+            type: "subtask",
+            projectId: "demo-calendar",
+            projectName: "Kalenderintegration",
+            title: "Beispiel: Sync-Log auswerten",
+            context: "Teilaufgabe · Kalender-Sync testen · Kalenderintegration",
+            earliestStart: demoDate(3, 8),
+            deadline: demoDate(8, 18),
+            start: null,
+            end: null
+        }
+    ];
+
+    // Daten, mit denen die Kalenderansicht arbeitet.
+    // Im Echtbetrieb werden diese Listen durch API-Antworten gefüllt.
+    let calendarEvents = isDemoMode ? demoEvents : [];
+    let calendarLongTodos = isDemoMode ? demoLongTodos : [];
+    let calendarSubtasks = isDemoMode ? demoUnscheduledSubtasks : [];
+
+    let selectedSubtask = null;
+    let isLoadingCalendar = false;
+    let isSavingSchedule = false;
+    let calendarLoadVersion = 0;
+
+    const timeFormatter = new Intl.DateTimeFormat("de-DE", {
+        hour: "2-digit",
+        minute: "2-digit"
+    });
+
+    // Wandelt einen Datumswert aus der API in ein Date-Objekt um.
+    function parseCalendarDate(value, fieldName) {
+        if (typeof value !== "string" || !value.trim()) {
+            throw new Error(`In den Kalenderdaten fehlt ${fieldName}.`);
+        }
+
+        // Reine Datumsangaben ausdrücklich als lokales Datum behandeln.
+        const normalizedValue = /^\d{4}-\d{2}-\d{2}$/.test(value)
+            ? `${value}T00:00:00`
+            : value;
+
+        const date = new Date(normalizedValue);
+
+        if (!Number.isFinite(date.getTime())) {
+            throw new Error(
+                `Die Kalenderdaten enthalten ein ungültiges Datum für ${fieldName}.`
+            );
+        }
+
+        return date;
     }
-];
 
-const demoUnscheduledSubtasks = [
-    {
-        id: "demo-subtask-mobile",
-        type: "subtask",
-        projectId: "demo-website",
-        projectName: "Website",
-        title: "Beispiel: Mobile Ansicht prüfen",
-        context: "Teilaufgabe · Wireframes überarbeiten · Website",
-        earliestStart: demoDate(0, 8),
-        deadline: demoDate(2, 18),
-        start: null,
-        end: null
-    },
-    {
-        id: "demo-subtask-sync",
-        type: "subtask",
-        projectId: "demo-calendar",
-        projectName: "Kalenderintegration",
-        title: "Beispiel: Sync-Log auswerten",
-        context: "Teilaufgabe · Kalender-Sync testen · Kalenderintegration",
-        earliestStart: demoDate(3, 8),
-        deadline: demoDate(8, 18),
-        start: null,
-        end: null
+    // Übersetzt eine eigene Teilaufgabe aus der API ins Kalenderformat.
+    // Wird für geplante und ungeplante Teilaufgaben verwendet.
+    function mapCalendarSubtask(raw) {
+        if (
+            raw.subtaskId == null
+            || raw.longToDoId == null
+            || raw.projectId == null
+        ) {
+            throw new Error(
+                "Bei einer Teilaufgabe fehlen Aufgaben- oder Projekt-IDs."
+            );
+        }
+
+        const hasStart = raw.from != null;
+        const hasEnd = raw.to != null;
+
+        if (hasStart !== hasEnd) {
+            throw new Error(
+                "Eine Teilaufgabe muss entweder beide Zeitangaben oder keine besitzen."
+            );
+        }
+
+        const start = hasStart
+            ? parseCalendarDate(raw.from, "Beginn der Teilaufgabe")
+            : null;
+
+        const end = hasEnd
+            ? parseCalendarDate(raw.to, "Ende der Teilaufgabe")
+            : null;
+
+        const earliestStart = parseCalendarDate(
+            raw.earliestStart,
+            "Beginn des langen To-Dos"
+        );
+
+        const deadline = parseCalendarDate(
+            raw.deadline,
+            "Frist des langen To-Dos"
+        );
+
+        if (deadline < earliestStart || (hasStart && end <= start)) {
+            throw new Error(
+                "Die Kalenderdaten enthalten ein ungültiges Zeitfenster."
+            );
+        }
+
+        return {
+            id: String(raw.subtaskId),
+            longToDoId: String(raw.longToDoId),
+            type: "subtask",
+            projectId: String(raw.projectId),
+            projectName: raw.projectName || "Unbenanntes Projekt",
+            title: raw.title || "Unbenannte Teilaufgabe",
+            context: [
+                "Teilaufgabe",
+                raw.longToDoTitle,
+                raw.projectName
+            ].filter(Boolean).join(" · "),
+            done: raw.done === true,
+            earliestStart,
+            deadline,
+            start,
+            end
+        };
     }
-];
 
-let selectedSubtask = null;
+    function mapCalendarWeek(data) {
+        const events = data.meetings.map(raw => ({
+            id: String(raw.meetingId),
+            type: "meeting",
+            projectId: raw.projectId == null ? "" : String(raw.projectId),
+            projectName: raw.projectName || "Unbenanntes Projekt",
+            title: raw.title || "Unbenanntes Meeting",
+            context: ["Meeting", raw.projectName].filter(Boolean).join(" · "),
+            done: raw.done === true,
+            start: parseCalendarDate(raw.from, "Meeting-Beginn"),
+            end: parseCalendarDate(raw.to, "Meeting-Ende")
+        }));
 
-const timeFormatter = new Intl.DateTimeFormat("de-DE", {
-    hour: "2-digit",
-    minute: "2-digit"
-});
+        const longTodos = data.longToDos.map(raw => {
+            const hasProgress =
+                Number.isInteger(raw.completedSubtasks)
+                && Number.isInteger(raw.totalSubtasks)
+                && raw.completedSubtasks >= 0
+                && raw.totalSubtasks >= raw.completedSubtasks;
+
+            return {
+                id: String(raw.longToDoId),
+                type: "longTodo",
+                projectId: raw.projectId == null ? "" : String(raw.projectId),
+                projectName: raw.projectName || "Unbenanntes Projekt",
+                title: raw.title || "Unbenanntes langes To-Do",
+                context: ["Langes To-Do", raw.projectName]
+                    .filter(Boolean).join(" · "),
+                done: raw.done === true,
+                start: parseCalendarDate(raw.from, "Beginn des langen To-Dos"),
+                end: parseCalendarDate(raw.to, "Frist des langen To-Dos"),
+                completedSubtasks: hasProgress ? raw.completedSubtasks : null,
+                totalSubtasks: hasProgress ? raw.totalSubtasks : null
+            };
+        });
+
+        const subtasks = data.subtasks.map(mapCalendarSubtask);
+
+        return { events, longTodos, subtasks };
+    }
+
+    function setCalendarLoading(loading) {
+        isLoadingCalendar = loading;
+
+        document.querySelector(".calendar-layout")
+            .setAttribute("aria-busy", String(loading));
+
+        [
+            "previousWeek",
+            "nextWeek",
+            "todayButton",
+            "calendarProjectFilter",
+            "calendarTypeFilter"
+        ].forEach(id => {
+            document.getElementById(id).disabled = loading;
+        });
+    }
+
+    async function loadCalendar() {
+        const loadVersion = ++calendarLoadVersion;
+        const message = document.getElementById("calendarMessage");
+
+        message.hidden = false;
+
+        if (isDemoMode) {
+            initializeProjectFilter();
+            renderWeek();
+
+            message.textContent =
+                "Vorschau mit Beispieldaten – keine Verbindung zum Backend.";
+
+            return;
+        }
+
+        const requestedWeek = localDateValue(currentMonday);
+
+        setCalendarLoading(true);
+
+        // Alte Termine entfernen, damit sie nicht unter einer neuen Woche stehen.
+        calendarEvents = [];
+        calendarLongTodos = [];
+        calendarSubtasks = [];
+        renderWeek();
+
+        message.textContent = "Kalenderdaten werden geladen …";
+
+        document.getElementById("longTodoBars").textContent =
+            "Lange To-Dos werden geladen …";
+
+        document.getElementById("unscheduledSubtasks").textContent =
+            "Teilaufgaben werden geladen …";
+
+        try {
+            const [weekData, unscheduledData] = await Promise.all([
+                window.PlanBApi.getCalendarWeek(requestedWeek),
+                window.PlanBApi.getCalendarUnscheduledSubtasks()
+            ]);
+
+            // Eine inzwischen gestartete neuere Anfrage hat Vorrang.
+            if (loadVersion !== calendarLoadVersion) {
+                return;
+            }
+
+            const mappedWeek = mapCalendarWeek(weekData);
+            const unscheduledTasks =
+                unscheduledData.map(mapCalendarSubtask);
+
+            // Dieser Endpunkt soll ausschließlich offene,
+            // noch nicht eingeplante eigene Teilaufgaben liefern.
+            if (unscheduledTasks.some(task =>
+                task.start !== null || task.end !== null || task.done
+            )) {
+                throw new Error(
+                    "Die Antwort für ungeplante Teilaufgaben enthält "
+                    + "bereits geplante oder erledigte Aufgaben."
+                );
+            }
+
+            // Jede Teilaufgabe darf nur einmal in den Listen vorkommen.
+            const subtasks = [
+                ...mappedWeek.subtasks,
+                ...unscheduledTasks
+            ];
+
+            const uniqueIds = new Set(subtasks.map(task => task.id));
+
+            if (uniqueIds.size !== subtasks.length) {
+                throw new Error(
+                    "Die Kalenderantwort enthält doppelte Teilaufgaben."
+                );
+            }
+
+            calendarEvents = mappedWeek.events;
+            calendarLongTodos = mappedWeek.longTodos;
+            calendarSubtasks = subtasks;
+
+            initializeProjectFilter();
+            renderWeek();
+
+            message.textContent = "Kalenderdaten geladen.";
+        } catch (error) {
+            if (loadVersion !== calendarLoadVersion) {
+                return;
+            }
+
+            console.error("Kalender konnte nicht geladen werden:", error);
+
+            calendarEvents = [];
+            calendarLongTodos = [];
+            calendarSubtasks = [];
+            renderWeek();
+
+            // Einen Ladefehler nicht als leere Aufgabenliste darstellen.
+            document.getElementById("longTodoBars").textContent =
+                "Lange To-Dos konnten nicht geladen werden.";
+
+            document.getElementById("unscheduledSubtasks").textContent =
+                "Teilaufgaben konnten nicht geladen werden.";
+
+            message.textContent =
+                "Kalender konnte nicht geladen werden. "
+                + (error.message || "Bitte versuche es erneut.")
+                + " Zum erneuten Laden kannst du auf „Heute“ klicken.";
+        } finally {
+            if (loadVersion === calendarLoadVersion) {
+                setCalendarLoading(false);
+            }
+        }
+    }
+
+    async function runScheduleAction(action) {
+        if (isSavingSchedule) return;
+
+        isSavingSchedule = true;
+
+        const controls = [...document.querySelectorAll(
+            "#calendarScheduleDialog input, "
+            + "#calendarScheduleDialog button, "
+            + "#calendarDetails button"
+        )];
+
+        const previousStates = controls.map(element => element.disabled);
+
+        controls.forEach(element => {
+            element.disabled = true;
+        });
+
+        try {
+            await action();
+        } finally {
+            controls.forEach((element, index) => {
+                element.disabled = previousStates[index];
+            });
+
+            isSavingSchedule = false;
+        }
+    }
+
+    async function persistSubtaskSchedule(task, start, end) {
+        if (isDemoMode) {
+            task.start = start;
+            task.end = end;
+            return;
+        }
+
+        if (!task.longToDoId || !task.id) {
+            throw new Error("Die IDs zum Speichern der Teilaufgabe fehlen.");
+        }
+
+        await window.PlanBApi.updateSubtaskSchedule(
+            task.longToDoId,
+            task.id,
+            {
+                from: start === null ? null : start.toISOString(),
+                to: end === null ? null : end.toISOString()
+            }
+        );
+    }
+
+    async function finishScheduleChange(start, successMessage) {
+        if (start !== null) {
+            currentMonday = getMonday(start);
+        }
+
+        ["calendarScheduleDialog", "calendarDetails"].forEach(id => {
+            const dialog = document.getElementById(id);
+            if (dialog.open) dialog.close();
+        });
+
+        selectedSubtask = null;
+
+        await loadCalendar();
+
+        if (!isDemoMode) {
+            const message = document.getElementById("calendarMessage");
+            message.hidden = false;
+
+            // Eine erfolgreiche Speicherung bleibt auch dann erkennbar,
+            // wenn das anschließende Neuladen fehlschlägt.
+            message.textContent =
+                successMessage + " " + message.textContent;
+        }
+
+        weekLabel.tabIndex = -1;
+        weekLabel.focus({ preventScroll: true });
+    }
+
+    async function removeSubtaskSchedule(task) {
+        if (!task || isSavingSchedule) return;
+
+        const note = document.querySelector(
+            "#calendarDetails .calendar-details-note"
+        );
+
+        await runScheduleAction(async () => {
+            note.textContent = "Planung wird aufgehoben …";
+
+            try {
+                await persistSubtaskSchedule(task, null, null);
+
+                await finishScheduleChange(
+                    null,
+                    "Zeitplanung aufgehoben. Die Zuweisung bleibt bestehen."
+                );
+            } catch (error) {
+                note.textContent =
+                    "Planung konnte nicht aufgehoben werden. "
+                    + (error.message || "Bitte versuche es erneut.");
+            }
+        });
+    }
 
     // Ermittelt den Montag der übergebenen Woche.
     function getMonday(date) {
@@ -183,15 +556,15 @@ const timeFormatter = new Intl.DateTimeFormat("de-DE", {
         calendarDays.append(column);
     }
 
-    const scheduledSubtasks = demoUnscheduledSubtasks.filter(task =>
+    const scheduledSubtasks = calendarSubtasks.filter(task =>
     task.start !== null && task.end !== null
     );
 
     renderEvents(
-        [...demoEvents, ...scheduledSubtasks].filter(matchesCalendarFilters)
+        [...calendarEvents, ...scheduledSubtasks].filter(matchesCalendarFilters)
     );
 
-    renderLongTodos(demoLongTodos.filter(matchesCalendarFilters));
+    renderLongTodos(calendarLongTodos.filter(matchesCalendarFilters));
     renderUnscheduledSubtasks();
     }
 
@@ -400,8 +773,10 @@ function renderLongTodos(longTodos) {
         const continuesBefore = firstDay < currentMonday;
         const continuesAfter = lastDay > addDays(currentMonday, 6);
 
-        const progress =
-            `${todo.completedSubtasks}/${todo.totalSubtasks} Teilaufgaben`;
+        const progress = todo.completedSubtasks != null
+            && todo.totalSubtasks != null
+                ? `${todo.completedSubtasks}/${todo.totalSubtasks} Teilaufgaben`
+                : "Fortschritt nicht verfügbar";
 
         const bar = document.createElement("button");
         bar.type = "button";
@@ -446,6 +821,9 @@ function renderLongTodos(longTodos) {
 
     function openCalendarDetails(item) {
     const dialog = document.getElementById("calendarDetails");
+    dialog.querySelector(".calendar-details-note").textContent = isDemoMode
+        ? "Vorschau mit Beispieldaten."
+        : "Geladene Daten aus deinem Plan-B-Kalender.";
 
     const typeNames = {
         meeting: "Meeting",
@@ -471,21 +849,27 @@ function renderLongTodos(longTodos) {
         + `${timeFormatter.format(item.end)} Uhr`;
 
     const progress = document.getElementById("calendarDetailsProgress");
-    progress.hidden = item.type !== "longTodo";
-    progress.textContent = item.type === "longTodo"
+
+    const hasProgress =
+        item.type === "longTodo"
+        && item.completedSubtasks != null
+        && item.totalSubtasks != null;
+
+    progress.hidden = !hasProgress;
+    progress.textContent = hasProgress
         ? `${item.completedSubtasks} von ${item.totalSubtasks} `
             + "Teilaufgaben erledigt."
         : "";
 
         const editableSubtask = item.type === "subtask"
-            ? demoUnscheduledSubtasks.find(task => task.id === item.id)
+            ? calendarSubtasks.find(task => task.id === item.id)
             : null;
 
         const actions = document.getElementById("calendarDetailsActions");
         const editButton = document.getElementById("calendarEditSchedule");
         const removeButton = document.getElementById("calendarRemoveSchedule");
 
-        actions.hidden = !editableSubtask;
+        actions.hidden = !editableSubtask || editableSubtask.done === true;
 
         editButton.onclick = () => {
             if (!editableSubtask) {
@@ -497,41 +881,49 @@ function renderLongTodos(longTodos) {
         };
 
         removeButton.onclick = () => {
-            if (!editableSubtask) {
-                return;
-            }
-
-            editableSubtask.start = null;
-            editableSubtask.end = null;
-
-            dialog.close();
-            renderWeek();
+            void removeSubtaskSchedule(editableSubtask);
         };
 
         dialog.showModal();
     }
 
-        function initializeProjectFilter() {
+    function initializeProjectFilter() {
         const select = document.getElementById("calendarProjectFilter");
+
+        const previousValue = select.value;
+        const previousLabel =
+            select.selectedOptions[0]?.textContent || previousValue;
+
         const projects = new Map();
 
         for (const item of [
-            ...demoEvents,
-            ...demoLongTodos,
-            ...demoUnscheduledSubtasks
+            ...calendarEvents,
+            ...calendarLongTodos,
+            ...calendarSubtasks
         ]) {
-            projects.set(item.projectId, item.projectName);
+            if (item.projectId != null && item.projectId !== "") {
+                projects.set(String(item.projectId), item.projectName);
+            }
+        }
+
+        // Gewähltes Projekt behalten, auch wenn es in der neuen Woche
+        // keine Einträge besitzt.
+        if (previousValue && !projects.has(previousValue)) {
+            projects.set(previousValue, previousLabel);
         }
 
         select.replaceChildren(new Option("Alle Projekte", ""));
 
         const sortedProjects = [...projects.entries()].sort(
-            (first, second) => first[1].localeCompare(second[1], "de")
+            (first, second) =>
+                String(first[1]).localeCompare(String(second[1]), "de")
         );
 
         for (const [id, name] of sortedProjects) {
-            select.append(new Option(name, id));
+            select.append(new Option(name || "Unbenanntes Projekt", id));
         }
+
+        select.value = previousValue;
     }
 
     function matchesCalendarFilters(item) {
@@ -551,7 +943,7 @@ function renderLongTodos(longTodos) {
     const container = document.getElementById("unscheduledSubtasks");
     container.replaceChildren();
 
-    const tasks = demoUnscheduledSubtasks.filter(task =>
+    const tasks = calendarSubtasks.filter(task =>
         task.start === null && matchesCalendarFilters(task)
     );
 
@@ -626,8 +1018,9 @@ function renderLongTodos(longTodos) {
         document.getElementById("calendarScheduleTitle").textContent =
             isEditing ? "Zeitfenster ändern" : "Teilaufgabe einplanen";
 
-        form.querySelector('button[type="submit"]').textContent =
-            isEditing ? "Änderung in Vorschau übernehmen" : "In Vorschau einplanen";
+        form.querySelector('button[type="submit"]').textContent = isDemoMode
+            ? (isEditing ? "Änderung in Vorschau übernehmen" : "In Vorschau einplanen")
+            : (isEditing ? "Änderung speichern" : "Einplanen");
 
         document.getElementById("calendarScheduleTask").textContent =
             task.title;
@@ -658,27 +1051,42 @@ function renderLongTodos(longTodos) {
         .checked = false;
     }
 
-    function findScheduleConflicts(start, end, currentSubtask) {
-        const events = [
-            ...demoEvents,
-            ...demoUnscheduledSubtasks
-        ];
+    async function findScheduleConflicts(start, end, currentSubtask) {
+        let events;
+
+        if (isDemoMode) {
+            events = [...calendarEvents, ...calendarSubtasks];
+        } else {
+            // Die Woche des gewählten Zeitfensters prüfen.
+            // Sie kann von der gerade angezeigten Woche abweichen.
+            const week = localDateValue(getMonday(start));
+            const data = await window.PlanBApi.getCalendarWeek(week);
+            const mapped = mapCalendarWeek(data);
+
+            events = [...mapped.events, ...mapped.subtasks];
+        }
 
         return events.filter(item => {
-            // Beim Ändern nicht mit dem eigenen bisherigen Zeitfenster vergleichen.
-            if (item === currentSubtask) {
+            // API-Antworten enthalten neue Objekte.
+            // Deshalb zusätzlich anhand der Teilaufgaben-ID vergleichen.
+            if (
+                item === currentSubtask
+                || (
+                    item.type === "subtask"
+                    && item.id != null
+                    && String(item.id) === String(currentSubtask.id)
+                )
+            ) {
                 return false;
             }
 
-            if (item.type !== "meeting" && item.type !== "subtask") {
-                return false;
-            }
-
-            if (!(item.start instanceof Date)
+            if (
+                !(item.start instanceof Date)
                 || !(item.end instanceof Date)
                 || !Number.isFinite(item.start.getTime())
                 || !Number.isFinite(item.end.getTime())
-                || item.end <= item.start) {
+                || item.end <= item.start
+            ) {
                 return false;
             }
 
@@ -686,12 +1094,12 @@ function renderLongTodos(longTodos) {
         });
     }
 
-   function scheduleSelectedSubtask(event) {
+   async function scheduleSelectedSubtask(event) {
         event.preventDefault();
 
-        if (!selectedSubtask) {
-            return;
-        }
+        if (!selectedSubtask || isSavingSchedule) return;
+
+        const task = selectedSubtask;
 
         const date = document.getElementById("calendarScheduleDate").value;
         const startTime =
@@ -705,17 +1113,26 @@ function renderLongTodos(longTodos) {
         const error = document.getElementById("calendarScheduleError");
         let errorMessage = "";
 
-        if (!Number.isFinite(start.getTime())
-            || !Number.isFinite(end.getTime())) {
+        if (
+            !Number.isFinite(start.getTime())
+            || !Number.isFinite(end.getTime())
+        ) {
             errorMessage =
                 "Bitte gib ein gültiges Datum und beide Uhrzeiten an.";
-        } else if (end <= start) {
+        } else if (
+            localDateValue(start) !== date
+            || localDateValue(end) !== date
+            || localTimeValue(start) !== startTime
+            || localTimeValue(end) !== endTime
+        ) {
             errorMessage =
-                "Das Ende muss nach dem Beginn liegen.";
-        } else if (start < selectedSubtask.earliestStart) {
+                "Dieses Datum oder diese Uhrzeit ist nicht gültig.";
+        } else if (end <= start) {
+            errorMessage = "Das Ende muss nach dem Beginn liegen.";
+        } else if (start < task.earliestStart) {
             errorMessage =
                 "Das Zeitfenster darf nicht vor dem Beginn des langen To-Dos starten.";
-        } else if (end > selectedSubtask.deadline) {
+        } else if (end > task.deadline) {
             errorMessage =
                 "Das Zeitfenster darf nicht nach der Frist des langen To-Dos enden.";
         }
@@ -723,52 +1140,100 @@ function renderLongTodos(longTodos) {
         error.textContent = errorMessage;
         error.hidden = !errorMessage;
 
-        if (errorMessage) {
-            return;
-        }
+        if (errorMessage) return;
 
-        const conflicts = findScheduleConflicts(start, end, selectedSubtask);
-        const conflictBox = document.getElementById("calendarScheduleConflict");
+        const conflictBox =
+            document.getElementById("calendarScheduleConflict");
         const conflictList =
             document.getElementById("calendarScheduleConflictList");
         const conflictConfirm =
             document.getElementById("calendarScheduleConflictConfirm");
 
-        if (conflicts.length > 0) {
-            conflictList.replaceChildren();
+        const submitButton = document.querySelector(
+            '#calendarScheduleForm button[type="submit"]'
+        );
 
-            conflicts.forEach(item => {
-                const entry = document.createElement("li");
+        const previousButtonText = submitButton.textContent;
 
-                entry.textContent =
-                    `${item.title}: `
-                    + `${dateFormatter.format(item.start)}, `
-                    + `${timeFormatter.format(item.start)} Uhr bis `
-                    + `${dateFormatter.format(item.end)}, `
-                    + `${timeFormatter.format(item.end)} Uhr`;
+        await runScheduleAction(async () => {
+            try {
+                submitButton.textContent = "Zeitfenster wird geprüft …";
 
-                conflictList.append(entry);
-            });
+                const conflicts = await findScheduleConflicts(start, end, task);
 
-            conflictBox.hidden = false;
+                if (conflicts.length > 0) {
+                    // Eine Bestätigung gilt nur für genau dieses Zeitfenster
+                    // und die zuletzt angezeigten Konflikte.
+                    const conflictKey = JSON.stringify([
+                        task.id,
+                        start.toISOString(),
+                        end.toISOString(),
+                        conflicts.map(item => JSON.stringify([
+                            item.type,
+                            item.id,
+                            item.title,
+                            item.start.toISOString(),
+                            item.end.toISOString()
+                        ])).sort()
+                    ]);
 
-            if (!conflictConfirm.checked) {
-                conflictConfirm.focus();
-                return;
+                    if (conflictConfirm.dataset.conflictKey !== conflictKey) {
+                        conflictConfirm.checked = false;
+                    }
+
+                    conflictConfirm.dataset.conflictKey = conflictKey;
+                    conflictList.replaceChildren();
+
+                    conflicts.forEach(item => {
+                        const entry = document.createElement("li");
+
+                        entry.textContent =
+                            `${item.title}: `
+                            + `${dateFormatter.format(item.start)}, `
+                            + `${timeFormatter.format(item.start)} Uhr bis `
+                            + `${dateFormatter.format(item.end)}, `
+                            + `${timeFormatter.format(item.end)} Uhr`;
+
+                        conflictList.append(entry);
+                    });
+
+                    conflictBox.hidden = false;
+
+                    if (!conflictConfirm.checked) return;
+                } else {
+                    resetScheduleConflict();
+                }
+
+                submitButton.textContent = isDemoMode
+                    ? "Vorschau wird aktualisiert …"
+                    : "Zeitfenster wird gespeichert …";
+
+                await persistSubtaskSchedule(task, start, end);
+
+                await finishScheduleChange(
+                    start,
+                    "Zeitfenster gespeichert."
+                );
+            } catch (requestError) {
+                error.textContent =
+                    "Zeitfenster konnte nicht übernommen werden. "
+                    + (requestError.message || "Bitte versuche es erneut.");
+
+                error.hidden = false;
+            } finally {
+                submitButton.textContent = previousButtonText;
             }
-        } else {
-            resetScheduleConflict();
+        });
+
+        // Erst nach Freigabe der Eingaben den Fokus setzen.
+        if (
+            document.getElementById("calendarScheduleDialog").open
+            && !conflictBox.hidden
+            && !conflictConfirm.checked
+            && error.hidden
+        ) {
+            conflictConfirm.focus();
         }
-
-        selectedSubtask.start = start;
-        selectedSubtask.end = end;
-
-        currentMonday = getMonday(start);
-
-        document.getElementById("calendarScheduleDialog").close();
-        selectedSubtask = null;
-
-        renderWeek();
     }
 
     function scrollToMorning() {
@@ -785,27 +1250,25 @@ function renderLongTodos(longTodos) {
 
     document.getElementById("previousWeek").addEventListener("click", () => {
         currentMonday = addDays(currentMonday, -7);
-        renderWeek();
+        void loadCalendar();
     });
 
     document.getElementById("nextWeek").addEventListener("click", () => {
         currentMonday = addDays(currentMonday, 7);
-        renderWeek();
+        void loadCalendar();
     });
 
     document.getElementById("todayButton").addEventListener("click", () => {
         currentMonday = getMonday(new Date());
-        renderWeek();
+        void loadCalendar();
         scrollToMorning();
     });
 
     const message = document.getElementById("calendarMessage");
     message.hidden = false;
-    message.textContent =
-    "Vorschau mit Beispieldaten – keine Verbindung zum Backend.";
-
-    document.getElementById("calendarProjectFilter")
-    .addEventListener("change", renderWeek);
+    message.textContent = isDemoMode
+        ? "Vorschau mit Beispieldaten – keine Verbindung zum Backend."
+        : "Die Kalender-Anbindung wird vorbereitet. Es sind noch keine Daten geladen.";
 
     document.getElementById("calendarTypeFilter")
         .addEventListener("change", renderWeek);
@@ -828,13 +1291,30 @@ function renderLongTodos(longTodos) {
             .addEventListener("input", resetScheduleConflict);
     });
 
-    initializeProjectFilter();
-    renderTimeLabels();
-    renderWeek();
-    requestAnimationFrame(scrollToMorning);
+    // Während einer laufenden Anfrage bleiben die Dialoge geöffnet.
+    // Nach Abschluss funktioniert Escape wieder wie gewohnt.
+    ["calendarScheduleDialog", "calendarDetails"].forEach(id => {
+        document.getElementById(id).addEventListener("cancel", event => {
+            if (isSavingSchedule) {
+                event.preventDefault();
+            }
+        });
+    });
 
-    initializeProjectFilter();
+    if (!isDemoMode) {
+        document.querySelector(".calendar-sidebar > p").textContent =
+            "Deine offenen Teilaufgaben ohne Zeitfenster. "
+            + "Die Liste ist unabhängig von der angezeigten Woche.";
+
+        document.querySelector(
+            "#calendarScheduleDialog .calendar-details-note"
+        ).textContent =
+            "Die Planung wird gespeichert. "
+            + "Überschneidungen mit deinen Plan-B-Terminen werden "
+            + "vor dem Speichern geprüft.";
+    }
+
     renderTimeLabels();
-    renderWeek();
+    void loadCalendar();
     requestAnimationFrame(scrollToMorning);
 })();

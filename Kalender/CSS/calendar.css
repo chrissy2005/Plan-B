@@ -465,3 +465,46 @@
     min-height: 0;
     overflow-wrap: anywhere;
 }
+
+/* Legende der aktuell unterstützten Eintragstypen */
+.calendar-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 20px;
+    margin: 0 0 16px;
+    padding: 0;
+    list-style: none;
+    color: #6f5b63;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 13px;
+}
+
+.calendar-legend li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.calendar-legend-swatch {
+    display: inline-block;
+    flex-shrink: 0;
+    width: 24px;
+    height: 14px;
+    border: 1px solid #9c8991;
+    border-radius: 3px;
+}
+
+.calendar-legend-swatch--long-todo {
+    border: 1px dashed #6f5b63;
+    background: #fbf7f8;
+}
+
+.calendar-legend-swatch--meeting {
+    border-left: 4px solid #993556;
+    background: #eadde3;
+}
+
+.calendar-legend-swatch--subtask {
+    border-left: 4px solid #6f5b63;
+    background: #fff;
+}
