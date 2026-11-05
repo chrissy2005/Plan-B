@@ -20,6 +20,7 @@
     let tokenClient = null;
     let accessToken = null;
     let googleReady = false;
+    let loadingEvents = false;
 
     init();
 
@@ -117,7 +118,9 @@
     }
 
     async function loadEvents() {
-        if (!accessToken) return;
+        if (!accessToken || loadingEvents) return;
+        loadingEvents = true;
+        setLoadingState(true);
         showMessage('Google-Termine werden geladen …', false);
         try {
             // KI-Log Nr. 52: Beim Öffnen und bei jeder Aktualisierung werden
@@ -132,17 +135,21 @@
             // werden abgefragt, damit private Kalender neben "primary"
             // ebenfalls in den Belegt-Zeiten erscheinen.
             const calendars = await loadCalendars();
-            const events = (
+            const eventGroups = (
                 await Promise.all(
                     calendars.map(calendar =>
-                        loadAllEvents(calendar.id, from, to)
+                        loadCalendarEventsSafely(calendar.id, from, to)
                     )
                 )
-            ).flat();
+            );
+            const events = eventGroups.flat();
             renderEvents(events);
             hideMessage();
         } catch (error) {
             showMessage(error.message, true);
+        } finally {
+            loadingEvents = false;
+            setLoadingState(false);
         }
 
         async function loadCalendars() {
@@ -167,7 +174,23 @@
                 pageToken = response.nextPageToken || null;
             } while (pageToken);
 
-            return calendars.length ? calendars : [{ id: 'primary' }];
+            return calendars.length
+                ? calendars.filter(calendar =>
+                    ['owner', 'writer', 'reader'].includes(calendar.accessRole)
+                )
+                : [{ id: 'primary' }];
+        }
+
+        async function loadCalendarEventsSafely(calendarId, from, to) {
+            try {
+                return await loadAllEvents(calendarId, from, to);
+            } catch (error) {
+                if (error.status === 401) {
+                    throw error;
+                }
+                console.warn('[Google Calendar] Kalender konnte nicht geladen werden:', calendarId, error.message);
+                return [];
+            }
         }
 
         async function loadAllEvents(calendarId, from, to) {
@@ -252,7 +275,11 @@
                 setConnectedState(false);
             }
             const detail = data && data.error && data.error.message;
-            throw new Error(detail || 'Google Calendar antwortet mit HTTP ' + response.status + '.');
+            const error = new Error(
+                detail || 'Google Calendar antwortet mit HTTP ' + response.status + '.'
+            );
+            error.status = response.status;
+            throw error;
         }
         return data;
     }
@@ -287,6 +314,13 @@
         disconnectButton.hidden = !connected;
         reloadButton.disabled = !connected;
         createButton.disabled = !connected;
+    }
+
+    function setLoadingState(loading) {
+        reloadButton.disabled = loading || !accessToken;
+        createButton.disabled = loading || !accessToken;
+        connectButton.disabled = loading;
+        disconnectButton.disabled = loading;
     }
 
     function setDefaultEventTimes() {
