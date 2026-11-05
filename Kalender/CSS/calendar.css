@@ -40,7 +40,7 @@
 
 .calendar-form {
     display: grid;
-    grid-template-columns: minmax(0, .9fr) minmax(0, 1.35fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
     width: 100%;
     max-width: none;
@@ -71,9 +71,9 @@
 }
 
 .calendar-form input[type="datetime-local"] {
-    min-width: 190px;
+    min-width: 0;
     padding-right: 6px;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 .calendar-form textarea.input {
