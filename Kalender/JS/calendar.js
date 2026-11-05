@@ -147,26 +147,19 @@
 
     // Übersetzt eine eigene Teilaufgabe aus der API ins Kalenderformat.
     // Wird für geplante und ungeplante Teilaufgaben verwendet.
-    function mapCalendarSubtask(raw, longTodoById) {
-        const subtaskId = raw.subtaskId ?? raw.id;
-        const longToDoId = raw.longToDoId;
-        const projectId = raw.projectId;
-
+    function mapCalendarSubtask(raw) {
         if (
-            subtaskId == null
-            || longToDoId == null
-            || projectId == null
+            raw.subtaskId == null
+            || raw.longToDoId == null
+            || raw.projectId == null
         ) {
             throw new Error(
                 "Bei einer Teilaufgabe fehlen Aufgaben- oder Projekt-IDs."
             );
         }
 
-        const rawStart = raw.startDateTime ?? raw.start ?? null;
-        const rawEnd = raw.endDateTime ?? raw.end ?? null;
-
-        const hasStart = rawStart !== null && rawStart !== undefined && String(rawStart).trim() !== '';
-        const hasEnd = rawEnd !== null && rawEnd !== undefined && String(rawEnd).trim() !== '';
+        const hasStart = raw.from != null;
+        const hasEnd = raw.to != null;
 
         if (hasStart !== hasEnd) {
             throw new Error(
@@ -175,44 +168,34 @@
         }
 
         const start = hasStart
-            ? parseCalendarDate(rawStart, "Beginn der Teilaufgabe")
+            ? parseCalendarDate(raw.from, "Beginn der Teilaufgabe")
             : null;
 
         const end = hasEnd
-            ? parseCalendarDate(rawEnd, "Ende der Teilaufgabe")
+            ? parseCalendarDate(raw.to, "Ende der Teilaufgabe")
             : null;
 
-        const parentLongTodo = longTodoById.get(String(longToDoId));
-        let earliestStart = null;
-        let deadline = null;
-        if(parentLongTodo){
-            const parentStart = parentLongTodo.startDateTime ?? parentLongTodo.start ?? null;
-            const parentEnd = parentLongTodo.endDateTime ?? parentLongTodo.end ?? null;
-            if(parentStart){
-                earliestStart = parseCalendarDate(parentStart, "Beginn des langen To-Dos");
-            }
-            if(parentEnd){
-                deadline = parseCalendarDate(parentEnd, "Frist des langen To-Dos");
-            }
-        }
-        if(start && end && end <= start){
-            throw new Error("Das Ende der Teilaufgabe muss nach ihrem Beginn liegen.");
-        }
-        if(earliestStart && deadline && deadline < earliestStart){
-            throw new Error("Das lange To-Do besitzt ein ungültiges Zeitfenster.");
-        }
-        if(start && earliestStart && start < earliestStart){
-            throw new Error("Die Teilaufgabe beginnt vor dem langen To-Do.");
-        }
-        if(end && deadline && end > deadline){
-            throw new Error("Die Teilaufgabe endet nach der Frist des langen To-Dos."); 
+        const earliestStart = parseCalendarDate(
+            raw.earliestStart,
+            "Beginn des langen To-Dos"
+        );
+
+        const deadline = parseCalendarDate(
+            raw.deadline,
+            "Frist des langen To-Dos"
+        );
+
+        if (deadline < earliestStart || (hasStart && end <= start)) {
+            throw new Error(
+                "Die Kalenderdaten enthalten ein ungültiges Zeitfenster."
+            );
         }
 
         return {
-            id: String(subtaskId),
-            longToDoId: String(longToDoId),
+            id: String(raw.subtaskId),
+            longToDoId: String(raw.longToDoId),
             type: "subtask",
-            projectId: String(projectId),
+            projectId: String(raw.projectId),
             projectName: raw.projectName || "Unbenanntes Projekt",
             title: raw.title || "Unbenannte Teilaufgabe",
             context: [
@@ -220,9 +203,7 @@
                 raw.longToDoTitle,
                 raw.projectName
             ].filter(Boolean).join(" · "),
-            description: raw.description || '',
-            priority: raw.priority || 'MEDIUM',
-            done: raw.done === true || raw.done ===1 || String(raw.done).toLocaleLowerCase() === "true",
+            done: raw.done === true,
             earliestStart,
             deadline,
             start,
@@ -230,7 +211,7 @@
         };
     }
 
-    function mapCalendarWeek(data, dashboardSubtasks, dashboardLongTodos) {
+    function mapCalendarWeek(data) {
         const events = data.meetings.map(raw => ({
             id: String(raw.meetingId),
             type: "meeting",
@@ -266,12 +247,7 @@
             };
         });
 
-        const longTodoById = new Map(dashboardLongTodos.map(todo => [
-            String(todo.longToDoId ?? todo.id),
-            todo
-        ]));
-
-        const subtasks = dashboardSubtasks.map(raw => mapDashboardSubtask(raw, longTodoById));
+        const subtasks = data.subtasks.map(mapCalendarSubtask);
 
         return { events, longTodos, subtasks };
     }
@@ -329,15 +305,7 @@
             // KI-Log Nr. 69: Der aktuelle Backend-Vertrag liefert alle
             // Kalenderdaten über GET /calendar. Der gesperrte Zusatz-Endpunkt
             // /calendar/unscheduled-subtasks wird nicht mehr aufgerufen.
-            const [
-                weekData,
-                dashboardSubtasks,
-                dashboardLongTodos
-            ] = await Promise.all([
-                window.PlanBApi.getCalendarWeek(requestedWeek),
-                window.PlanBApi.getMySubtasks(),
-                window.PlanBApi.getMyLongtodos()
-            ])
+            const weekData = await window.PlanBApi.getCalendarWeek(requestedWeek);
 
             // Eine inzwischen gestartete neuere Anfrage hat Vorrang.
             if (loadVersion !== calendarLoadVersion) {
@@ -397,21 +365,6 @@
             if (loadVersion === calendarLoadVersion) {
                 setCalendarLoading(false);
             }
-        }
-    }
-
-    async function loadUnscheduledSubtasks(){
-        try {
-            const allMySubtasks = await api.getMySubtasks();
-            state.unscheduledSubtasks = allMySubtasks.filter(subtask =>
-                !subtask.start || !subtask.end
-            );
-            console.info('[Calendar] Ungeplante Subtasks:', state.unscheduledSubtasks);
-            renderUnscheduledSubtasks();
-        } catch(error){
-            console.error('Ungeplante Subtasks konnten nicht geladen werden: ', error);
-            state.unscheduledSubtasks = [];
-            showCalendarError('Meine Teilaufgaben konnten nicht geladen werden.');
         }
     }
 
@@ -1053,9 +1006,9 @@ function renderLongTodos(longTodos) {
             // Sie kann von der gerade angezeigten Woche abweichen.
             const week = localDateValue(getMonday(start));
             const data = await window.PlanBApi.getCalendarWeek(week);
-            const mapped = mapCalendarWeek(data, [], []);
+            const mapped = mapCalendarWeek(data);
 
-            events = [...mapped.events, ...calendarSubtasks];
+            events = [...mapped.events, ...mapped.subtasks];
         }
 
         return events.filter(item => {

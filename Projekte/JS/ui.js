@@ -160,7 +160,7 @@
     toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
   }
 
-  /* ---------- Kopfzeile (Name, Abmelden) ---------- */
+  /* ---------- Kopfzeile (Name, Einladungs-Badge, Abmelden) ---------- */
   async function initTopbar(api) {
     const logoutButton = $('#logoutButton');
     if (logoutButton) {
@@ -171,9 +171,11 @@
       });
     }
     try {
-      const me = await api.getCurrentUser();
+      const [me, count] = await Promise.all([api.getCurrentUser(), api.getOpenInvitationCount()]);
       const nameEl = $('#currentUserName');
       if (nameEl) nameEl.textContent = me.name;
+      const badge = $('#invitationBadge');
+      if (badge) { badge.textContent = count; badge.hidden = !count; }
       return me;
     } catch (e) {
       return null;
