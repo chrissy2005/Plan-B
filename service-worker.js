@@ -1,10 +1,11 @@
-const CACHE_NAME = "project-app-v27";
+const CACHE_NAME = "project-app-v28";
 
 const APP_SHELL = [
     "/",
     "/Home/HTML/index.html",
     "/Home/JS/menu.js",
     "/Home/CSS/menu.css",
+    "/Home/CSS/home.css",
     "/Login/HTML/login.html",
     "/Login/HTML/register.html",
     "/Login/JS/login.js",
