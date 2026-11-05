@@ -216,15 +216,11 @@
             // werden abgefragt, damit private Kalender neben "primary"
             // ebenfalls in den Belegt-Zeiten erscheinen.
             const calendars = await loadCalendars();
-            const eventGroups = (
-                await Promise.all(
-                    calendars.map(calendar =>
-                        loadCalendarEventsSafely(calendar.id, from, to)
-                    )
-                )
-            );
-            const events = eventGroups.flat();
-            renderEvents(events);
+            // KI-Log Nr. 67: Belegte Zeiträume werden ausschließlich über
+            // FreeBusy geladen. Die Events-API bleibt nur für das Erstellen
+            // neuer Termine im Formular erhalten.
+            const busyPeriods = await loadBusyPeriods(calendars, from, to);
+            renderEvents(busyPeriods);
             hideMessage();
         } catch (error) {
             showMessage(error.message, true);
@@ -262,45 +258,36 @@
                 : [{ id: 'primary' }];
         }
 
-        async function loadCalendarEventsSafely(calendarId, from, to) {
-            try {
-                return await loadAllEvents(calendarId, from, to);
-            } catch (error) {
-                if (error.status === 401) {
-                    throw error;
-                }
-                console.warn('[Google Calendar] Kalender konnte nicht geladen werden:', calendarId, error.message);
-                return [];
-            }
-        }
-
-        async function loadAllEvents(calendarId, from, to) {
-            const events = [];
-            let pageToken = null;
-
-            do {
-                const query = new URLSearchParams({
-                    timeMin: from.toISOString(),
-                    timeMax: to.toISOString(),
-                    singleEvents: 'true',
-                    orderBy: 'startTime',
-                    showDeleted: 'false',
-                    maxResults: '250'
+        async function loadBusyPeriods(calendars, from, to) {
+            const periods = [];
+            // KI-Log Nr. 68: Google akzeptiert maximal 50 Kalender pro
+            // FreeBusy-Anfrage; größere Kalenderlisten werden aufgeteilt.
+            for (let offset = 0; offset < calendars.length; offset += 50) {
+                const batch = calendars.slice(offset, offset + 50);
+                const response = await calendarRequest('/freeBusy', {
+                    method: 'POST',
+                    body: {
+                        timeMin: from.toISOString(),
+                        timeMax: to.toISOString(),
+                        items: batch.map(calendar => ({ id: calendar.id }))
+                    }
                 });
-                if (pageToken) {
-                    query.set('pageToken', pageToken);
-                }
-
-                const response = await calendarRequest(
-                    '/calendars/' + encodeURIComponent(calendarId) +
-                    '/events?' + query.toString(),
-                    { method: 'GET' }
-                );
-                events.push(...(response.items || []));
-                pageToken = response.nextPageToken || null;
-            } while (pageToken);
-
-            return events.map(event => ({ ...event, calendarId }));
+                Object.entries(response.calendars || {}).forEach(([calendarId, calendar]) => {
+                    if (calendar.errors && calendar.errors.length) {
+                        throw new Error('FreeBusy konnte Kalender ' + calendarId + ' nicht lesen.');
+                    }
+                    (calendar.busy || []).forEach((busy, index) => {
+                        periods.push({
+                            id: calendarId + ':' + index + ':' + busy.start,
+                            start: { dateTime: busy.start },
+                            end: { dateTime: busy.end }
+                        });
+                    });
+                });
+            }
+            return periods.sort((left, right) =>
+                new Date(left.start.dateTime) - new Date(right.start.dateTime)
+            );
         }
     }
 
