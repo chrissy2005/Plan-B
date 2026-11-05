@@ -4,7 +4,7 @@ const API_URL = "https://plan-b-api-6486e78ed17c.herokuapp.com"; //KI-Log Nr. 47
 if("serviceWorker" in navigator){
     window.addEventListener("load", async () => {
         try {
-            await navigator.serviceWorker.register("/service-worker.js?v=30");
+            await navigator.serviceWorker.register("/service-worker.js?v=31");
             console.log("Service Worker registriert");
         } catch (error){
             console.error("Service Worker konnte nicht registriert werden:", error);
@@ -43,7 +43,7 @@ $("#logon").click(function() {
               if (data.userId !== undefined) {
                   sessionStorage.setItem("user-id", data.userId);
               }
-              window.location.href = "../../Home/HTML/index.html?v=30"; //KI-Log Nr. 8
+              window.location.href = "../../Home/HTML/index.html?v=31"; //KI-Log Nr. 8
           },
           data: JSON.stringify(user), //KI-Log Nr. 42: Zugangsdaten werden als JSON an /auth gesendet.
           processData: false,

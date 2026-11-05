@@ -1,4 +1,86 @@
 /* KI-Log Nr. 54: Dashboard uses the same visual language as the project area. */
+/* KI-Log Nr. 55: Home keeps the project header contract locally as well, so
+   an older menu stylesheet cannot change the dashboard navigation. */
+.topbar {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    height: 72px;
+    padding: 0 24px;
+    border-bottom: 2px solid #993556;
+    background: #fff;
+}
+
+.topbar .logo {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 46px;
+    height: 46px;
+    border: 2px solid #993556;
+    border-radius: 6px;
+    color: #993556;
+}
+
+.topbar .logo svg {
+    width: 20px;
+    height: 20px;
+}
+
+.topbar .nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.topbar .nav a {
+    padding: 9px 14px;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    color: #351722;
+    font-size: 16px;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.topbar .nav a:hover,
+.topbar .nav a[aria-current="page"] {
+    border-color: #c9b5bd;
+    color: #993556;
+}
+
+.topbar .nav a[aria-current="page"] {
+    border-color: #993556;
+    font-weight: 600;
+}
+
+.topbar .user-area {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-left: auto;
+}
+
+.topbar .user-name {
+    color: #6f5b63;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.topbar #logoutButton {
+    min-height: 40px;
+    padding: 8px 16px;
+    border: 1px solid #c9b5bd;
+    border-radius: 6px;
+    background: #fff;
+    color: #351722;
+    cursor: pointer;
+}
+
+.topbar #logoutButton:hover {
+    background: #fbf7f8;
+}
+
 .dashboard-page {
     max-width: 1280px;
     margin: 0 auto;
