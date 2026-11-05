@@ -111,6 +111,11 @@ Ungeplante Teilaufgaben gehören nicht in dieses Array.
 
 ## 2. Eigene ungeplante Teilaufgaben laden
 
+Die aktuelle Kalenderansicht verwendet diesen separaten Endpunkt nicht.
+Ungeplante Teilaufgaben werden aus der Antwort von `GET /calendar?week=...`
+gefiltert, damit die Kalenderansicht mit einer einzigen berechtigten
+Kalenderabfrage funktioniert.
+
 GET /calendar/unscheduled-subtasks
 
 Antwort: HTTP 200
