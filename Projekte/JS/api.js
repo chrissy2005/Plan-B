@@ -382,7 +382,6 @@
         !data
         || !Array.isArray(data.meetings)
         || !Array.isArray(data.subtasks)
-        || !Array.isArray(data.longToDos)
       ) {
         throw new Error('Die Kalenderantwort hat ein ungültiges Format.');
       }
@@ -394,7 +393,7 @@
     // Eigene offene Teilaufgaben ohne Zeitfenster, unabhängig von der Woche.
     // Antwort: { subtasks: [...] }
     async getCalendarUnscheduledSubtasks() {
-      const data = await request('GET', '/calendar/unscheduled-subtasks');
+      const data = await api.getMySubtasks();
 
       if (!data || !Array.isArray(data.subtasks)) {
         throw new Error(
@@ -506,6 +505,7 @@ async getMySubtasks(filters = {}) {
                 : data.items || []
         );
 
+    console.info('[API] Get /me/subtasks response:', JSON.stringify(list, null, 2));
     return list.map(subtask => ({
         ...subtask,
         id: String(
