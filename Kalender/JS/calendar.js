@@ -5,7 +5,9 @@
     // vom Typ "Webanwendung" angelegt. Es wird kein Client-Secret im Frontend
     // gespeichert.
     const GOOGLE_CLIENT_ID = '152574630222-bn4nmk4s5q8hf7rouol53rcj0lsscc7r.apps.googleusercontent.com';
-    const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
+    // KI-Log Nr. 58: Der vollständige Calendar-Scope ist erforderlich, damit
+    // auch private Kalender gelesen und neue Termine erstellt werden können.
+    const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar';
     const CALENDAR_API = 'https://www.googleapis.com/calendar/v3';
 
     const connectButton = document.querySelector('#googleConnect');
@@ -21,13 +23,14 @@
     let accessToken = null;
     let googleReady = false;
     let loadingEvents = false;
+    let tokenRequestPromise = null;
 
     init();
 
     function init() {
         connectButton.addEventListener('click', connectGoogle);
         disconnectButton.addEventListener('click', disconnectGoogle);
-        reloadButton.addEventListener('click', loadEvents);
+        reloadButton.addEventListener('click', refreshEverything);
         form.addEventListener('submit', createEvent);
         setDefaultEventTimes();
         const googleScript = document.querySelector('#googleIdentityScript');
@@ -58,27 +61,12 @@
 
         // KI-Log Nr. 51: Der Token wird nur im Speicher gehalten und nie in
         // localStorage, sessionStorage oder einem eigenen Backend gespeichert.
-        tokenClient = window.google.accounts.oauth2.initTokenClient({
-            client_id: GOOGLE_CLIENT_ID,
-            scope: CALENDAR_SCOPE,
-            callback: response => {
-                if (response.error || !response.access_token) {
-                    showMessage(formatGoogleAuthError(response), true);
-                    return;
-                }
-                accessToken = response.access_token;
+        requestGoogleToken('consent')
+            .then(() => {
                 setConnectedState(true);
-                loadEvents();
-            },
-            error_callback: error => {
-                showMessage(formatGoogleAuthError(error), true);
-            }
-        });
-        try {
-            tokenClient.requestAccessToken({ prompt: 'consent' });
-        } catch (error) {
-            showMessage('Google-Anmeldung konnte nicht gestartet werden: ' + error.message, true);
-        }
+                return loadEvents();
+            })
+            .catch(error => showMessage(error.message, true));
     }
 
     function waitForGoogleClient() {
@@ -115,6 +103,60 @@
         accessToken = null;
         setConnectedState(false);
         eventsBody.innerHTML = '<tr><td colspan="3" class="empty">Bitte zuerst Google verbinden.</td></tr>';
+    }
+
+    async function refreshEverything() {
+        if (loadingEvents) return;
+        // KI-Log Nr. 59: Der Aktualisieren-Button fordert vor dem vollständigen
+        // Neuaufbau der Tabelle einen frischen Google-Token an. Dadurch werden
+        // neue private Termine nach einer Änderung zuverlässig berücksichtigt.
+        if (!googleReady) {
+            showMessage('Die Google-Anmeldung wird noch geladen. Bitte erneut versuchen.', true);
+            return;
+        }
+        try {
+            setLoadingState(true);
+            showMessage('Google-Kalender werden vollständig neu geladen …', false);
+            await requestGoogleToken('');
+            setConnectedState(true);
+            eventsBody.innerHTML = '<tr><td colspan="3" class="empty">Kalender werden neu geladen …</td></tr>';
+            await loadEvents();
+        } catch (error) {
+            showMessage(error.message, true);
+        } finally {
+            setLoadingState(false);
+        }
+    }
+
+    function requestGoogleToken(prompt) {
+        if (tokenRequestPromise) return tokenRequestPromise;
+        tokenRequestPromise = new Promise((resolve, reject) => {
+            if (!googleReady || !window.google || !window.google.accounts || !window.google.accounts.oauth2) {
+                reject(new Error('Google-Anmeldung ist noch nicht bereit.'));
+                return;
+            }
+            tokenClient = window.google.accounts.oauth2.initTokenClient({
+                client_id: GOOGLE_CLIENT_ID,
+                scope: CALENDAR_SCOPE,
+                callback: response => {
+                    if (response.error || !response.access_token) {
+                        reject(new Error(formatGoogleAuthError(response)));
+                        return;
+                    }
+                    accessToken = response.access_token;
+                    resolve();
+                },
+                error_callback: error => reject(new Error(formatGoogleAuthError(error)))
+            });
+            try {
+                tokenClient.requestAccessToken({ prompt });
+            } catch (error) {
+                reject(new Error('Google-Anmeldung konnte nicht gestartet werden: ' + error.message));
+            }
+        }).finally(() => {
+            tokenRequestPromise = null;
+        });
+        return tokenRequestPromise;
     }
 
     async function loadEvents() {
@@ -259,9 +301,10 @@
         }
     }
 
-    async function calendarRequest(path, options) {
+    async function calendarRequest(path, options, retryAfterUnauthorized = true) {
         const response = await fetch(CALENDAR_API + path, {
             method: options.method,
+            cache: 'no-store',
             headers: {
                 Accept: 'application/json',
                 Authorization: 'Bearer ' + accessToken,
@@ -273,6 +316,14 @@
         if (!response.ok) {
             if (response.status === 401) {
                 setConnectedState(false);
+                if (retryAfterUnauthorized) {
+                    // KI-Log Nr. 60: Bei abgelaufenem Token wird einmal
+                    // automatisch still neu autorisiert und die Anfrage
+                    // anschließend exakt wiederholt.
+                    await requestGoogleToken('');
+                    setConnectedState(true);
+                    return calendarRequest(path, options, false);
+                }
             }
             const detail = data && data.error && data.error.message;
             const error = new Error(
