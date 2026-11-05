@@ -4,7 +4,7 @@ const API_URL = "https://plan-b-api-6486e78ed17c.herokuapp.com";
 const DEV_BYPASS_AUTH = false; // KI-Log Nr. 47: Heroku-Login aktiv.
  
 if (!DEV_BYPASS_AUTH && !sessionStorage.getItem("token")) {
-  window.location.replace("../../Login/HTML/login.html?v=29");
+  window.location.replace("../../Login/HTML/login.html?v=30");
 }
  
 async function logout() {
@@ -27,6 +27,6 @@ async function logout() {
  
   
   sessionStorage.removeItem("token");
-  window.location.replace("../../Login/HTML/login.html?v=29");
+  window.location.replace("../../Login/HTML/login.html?v=30");
 }
  
