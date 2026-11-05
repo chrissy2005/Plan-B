@@ -157,10 +157,14 @@
 
 #dashboardFilters .field {
     display: grid;
+    grid-template-rows: 20px 52px auto;
+    align-items: start;
     gap: 6px;
 }
 
 #dashboardFilters label {
+    display: block;
+    line-height: 20px;
     color: var(--muted);
     font-size: 14px;
     font-weight: 600;
@@ -181,6 +185,8 @@
 }
 
 #dashboardFilters small {
+    display: block;
+    min-height: 18px;
     color: var(--muted);
     font-size: 12px;
 }
