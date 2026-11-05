@@ -18,14 +18,12 @@
     const statusBox = document.querySelector('#calendarConnectionStatus');
     const messageBox = document.querySelector('#calendarMessage');
     const eventsBody = document.querySelector('#googleEventsBody');
-    const syncStatus = document.querySelector('#calendarSyncStatus');
 
     let tokenClient = null;
     let accessToken = null;
     let googleReady = false;
     let loadingEvents = false;
     let tokenRequestPromise = null;
-    let liveRefreshTimer = null;
 
     init();
 
@@ -34,11 +32,6 @@
         disconnectButton.addEventListener('click', disconnectGoogle);
         reloadButton.addEventListener('click', () => refreshEverything(false));
         form.addEventListener('submit', createEvent);
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && accessToken && !loadingEvents) {
-                refreshEverything(true);
-            }
-        });
         setDefaultEventTimes();
         const googleScript = document.querySelector('#googleIdentityScript');
         googleScript.addEventListener('load', () => {
@@ -71,7 +64,6 @@
         requestGoogleToken('consent')
             .then(() => {
                 setConnectedState(true);
-                startLiveRefresh();
                 return loadEvents();
             })
             .catch(error => showMessage(error.message, true));
@@ -109,7 +101,6 @@
             window.google.accounts.oauth2.revoke(accessToken);
         }
         accessToken = null;
-        stopLiveRefresh();
         setConnectedState(false);
         eventsBody.innerHTML = '<tr><td colspan="3" class="empty">Bitte zuerst Google verbinden.</td></tr>';
     }
@@ -138,8 +129,10 @@
                 await requestGoogleToken('consent');
             }
             setConnectedState(true);
-            startLiveRefresh();
-            eventsBody.innerHTML = '<tr><td colspan="3" class="empty">Kalender werden neu geladen …</td></tr>';
+            // KI-Log Nr. 63: Vor jedem manuellen Voll-Reload wird die alte
+            // Anzeige entfernt. So bleiben gelöschte Google-Termine nicht
+            // versehentlich in der Tabelle stehen.
+            eventsBody.innerHTML = '<tr><td colspan="3" class="empty">Kalender werden vollständig neu geladen …</td></tr>';
             await loadEvents();
         } catch (error) {
             showMessage(error.message, true);
@@ -147,27 +140,6 @@
             setLoadingState(false);
         }
 
-    }
-
-    function startLiveRefresh() {
-        if (liveRefreshTimer) return;
-        // KI-Log Nr. 62: Google Calendar bietet für eine reine Browser-Seite
-        // keinen dauerhaften Push-WebHook. Deshalb wird sichtbar regelmäßig
-        // nachgeladen; der manuelle Button bleibt für einen sofortigen Reload.
-        liveRefreshTimer = window.setInterval(() => {
-            if (document.visibilityState === 'visible' && accessToken && !loadingEvents) {
-                refreshEverything(true);
-            }
-        }, 30000);
-        syncStatus.textContent = 'Automatische Aktualisierung aktiv (alle 30 Sekunden).';
-    }
-
-    function stopLiveRefresh() {
-        if (liveRefreshTimer) {
-            window.clearInterval(liveRefreshTimer);
-            liveRefreshTimer = null;
-        }
-        syncStatus.textContent = 'Nach der Verbindung wird automatisch regelmäßig aktualisiert.';
     }
 
     function requestGoogleToken(prompt) {
@@ -407,9 +379,6 @@
         disconnectButton.hidden = !connected;
         reloadButton.disabled = !connected;
         createButton.disabled = !connected;
-        if (!connected) {
-            stopLiveRefresh();
-        }
     }
 
     function setLoadingState(loading) {
