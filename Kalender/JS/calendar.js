@@ -117,16 +117,11 @@
         try {
             setLoadingState(true);
             showMessage('Google-Kalender werden vollständig neu geladen …', false);
-            try {
-                await requestGoogleToken('');
-            } catch (error) {
-                if (isAutomatic) {
-                    throw new Error('Die Google-Verbindung ist abgelaufen. Bitte erneut mit Google Kalender verbinden.');
-                }
-                // KI-Log Nr. 61: Nach Erweiterung des OAuth-Scopes darf der
-                // manuelle Aktualisieren-Button einmalig die neue Freigabe
-                // interaktiv anfordern.
-                await requestGoogleToken('consent');
+            // KI-Log Nr. 64: Bei einem manuellen Reload wird der vorhandene
+            // Token sofort wiederverwendet. Dadurch startet der Klick direkt
+            // mit dem Kalender-GET statt jedes Mal auf OAuth zu warten.
+            if (!accessToken) {
+                await requestGoogleToken(isAutomatic ? '' : 'consent');
             }
             setConnectedState(true);
             // KI-Log Nr. 63: Vor jedem manuellen Voll-Reload wird die alte
