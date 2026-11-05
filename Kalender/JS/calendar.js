@@ -47,7 +47,7 @@
         waitForGoogleClient();
     }
 
-    function connectGoogle() {
+    async function connectGoogle() {
         if (!isConfigured()) {
             showMessage(
                 'Bitte zuerst GOOGLE_CLIENT_ID in Kalender/JS/calendar.js eintragen und die OAuth-Weiterleitungs-URI in Google Cloud konfigurieren.',
@@ -63,12 +63,23 @@
 
         // KI-Log Nr. 51: Der Token wird nur im Speicher gehalten und nie in
         // localStorage, sessionStorage oder einem eigenen Backend gespeichert.
-        requestGoogleToken('consent')
-            .then(() => {
-                setConnectedState(true);
-                return loadEvents();
-            })
-            .catch(error => showMessage(error.message, true));
+        // KI-Log Nr. 66: Ein stiller Wiederherstellungsversuch darf den
+        // manuellen Login nicht blockieren. Erst den laufenden Versuch
+        // abwarten, danach bewusst einen interaktiven Consent-Token anfordern.
+        if (tokenRequestPromise) {
+            try {
+                await tokenRequestPromise;
+            } catch (error) {
+                // Der manuelle Login startet danach mit prompt=consent neu.
+            }
+        }
+        try {
+            await requestGoogleToken('consent');
+            setConnectedState(true);
+            await loadEvents();
+        } catch (error) {
+            showMessage(error.message, true);
+        }
     }
 
     function waitForGoogleClient() {
