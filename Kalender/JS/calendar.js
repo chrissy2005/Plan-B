@@ -128,14 +128,49 @@
             from.setDate(from.getDate() - 90);
             const to = new Date();
             to.setDate(to.getDate() + 365);
-            const events = await loadAllEvents(from, to);
+            // KI-Log Nr. 57: Alle Kalender des angemeldeten Google-Kontos
+            // werden abgefragt, damit private Kalender neben "primary"
+            // ebenfalls in den Belegt-Zeiten erscheinen.
+            const calendars = await loadCalendars();
+            const events = (
+                await Promise.all(
+                    calendars.map(calendar =>
+                        loadAllEvents(calendar.id, from, to)
+                    )
+                )
+            ).flat();
             renderEvents(events);
             hideMessage();
         } catch (error) {
             showMessage(error.message, true);
         }
 
-        async function loadAllEvents(from, to) {
+        async function loadCalendars() {
+            const calendars = [];
+            let pageToken = null;
+
+            do {
+                const query = new URLSearchParams({
+                    minAccessRole: 'reader',
+                    showDeleted: 'false',
+                    maxResults: '250'
+                });
+                if (pageToken) {
+                    query.set('pageToken', pageToken);
+                }
+
+                const response = await calendarRequest(
+                    '/users/me/calendarList?' + query.toString(),
+                    { method: 'GET' }
+                );
+                calendars.push(...(response.items || []));
+                pageToken = response.nextPageToken || null;
+            } while (pageToken);
+
+            return calendars.length ? calendars : [{ id: 'primary' }];
+        }
+
+        async function loadAllEvents(calendarId, from, to) {
             const events = [];
             let pageToken = null;
 
@@ -153,14 +188,15 @@
                 }
 
                 const response = await calendarRequest(
-                    '/calendars/primary/events?' + query.toString(),
+                    '/calendars/' + encodeURIComponent(calendarId) +
+                    '/events?' + query.toString(),
                     { method: 'GET' }
                 );
                 events.push(...(response.items || []));
                 pageToken = response.nextPageToken || null;
             } while (pageToken);
 
-            return events;
+            return events.map(event => ({ ...event, calendarId }));
         }
     }
 
@@ -226,7 +262,15 @@
             eventsBody.innerHTML = '<tr><td colspan="3" class="empty">Keine Google-Termine im geladenen Zeitraum.</td></tr>';
             return;
         }
-        eventsBody.innerHTML = events.map(item => {
+        const uniqueEvents = Array.from(
+            new Map(
+                events.map(item => [
+                    (item.calendarId || '') + ':' + item.id,
+                    item
+                ])
+            ).values()
+        );
+        eventsBody.innerHTML = uniqueEvents.map(item => {
             const start = item.start.dateTime || item.start.date;
             const end = item.end.dateTime || item.end.date;
             return `<tr>
