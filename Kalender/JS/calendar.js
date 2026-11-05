@@ -260,30 +260,45 @@
 
         async function loadBusyPeriods(calendars, from, to) {
             const periods = [];
+            const maxRangeMs = 90 * 24 * 60 * 60 * 1000;
+            let rangeStart = new Date(from);
+
             // KI-Log Nr. 68: Google akzeptiert maximal 50 Kalender pro
-            // FreeBusy-Anfrage; größere Kalenderlisten werden aufgeteilt.
-            for (let offset = 0; offset < calendars.length; offset += 50) {
-                const batch = calendars.slice(offset, offset + 50);
-                const response = await calendarRequest('/freeBusy', {
-                    method: 'POST',
-                    body: {
-                        timeMin: from.toISOString(),
-                        timeMax: to.toISOString(),
-                        items: batch.map(calendar => ({ id: calendar.id }))
-                    }
-                });
-                Object.entries(response.calendars || {}).forEach(([calendarId, calendar]) => {
-                    if (calendar.errors && calendar.errors.length) {
-                        throw new Error('FreeBusy konnte Kalender ' + calendarId + ' nicht lesen.');
-                    }
-                    (calendar.busy || []).forEach((busy, index) => {
-                        periods.push({
-                            id: calendarId + ':' + index + ':' + busy.start,
-                            start: { dateTime: busy.start },
-                            end: { dateTime: busy.end }
+            // FreeBusy-Anfrage und begrenzt außerdem den angefragten Zeitraum.
+            // Deshalb werden Kalender und Zeitraum getrennt aufgeteilt.
+            while (rangeStart < to) {
+                const rangeEnd = new Date(
+                    Math.min(rangeStart.getTime() + maxRangeMs, to.getTime())
+                );
+                for (let offset = 0; offset < calendars.length; offset += 50) {
+                    const batch = calendars.slice(offset, offset + 50);
+                    const response = await calendarRequest('/freeBusy', {
+                        method: 'POST',
+                        body: {
+                            timeMin: rangeStart.toISOString(),
+                            timeMax: rangeEnd.toISOString(),
+                            items: batch.map(calendar => ({ id: calendar.id }))
+                        }
+                    });
+                    Object.entries(response.calendars || {}).forEach(([calendarId, calendar]) => {
+                        if (calendar.errors && calendar.errors.length) {
+                            console.warn(
+                                '[Google Calendar] Belegt-Zeiten konnten nicht geladen werden:',
+                                calendarId,
+                                calendar.errors
+                            );
+                            return;
+                        }
+                        (calendar.busy || []).forEach(busy => {
+                            periods.push({
+                                id: calendarId + ':' + busy.start + ':' + busy.end,
+                                start: { dateTime: busy.start },
+                                end: { dateTime: busy.end }
+                            });
                         });
                     });
-                });
+                }
+                rangeStart = rangeEnd;
             }
             return periods.sort((left, right) =>
                 new Date(left.start.dateTime) - new Date(right.start.dateTime)
