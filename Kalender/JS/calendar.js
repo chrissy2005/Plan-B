@@ -113,7 +113,7 @@
         }
         accessToken = null;
         setConnectedState(false);
-        eventsBody.innerHTML = '<tr><td colspan="4" class="empty">Bitte zuerst Google verbinden.</td></tr>';
+        eventsBody.innerHTML = '<tr><td colspan="3" class="empty">Bitte zuerst Google verbinden.</td></tr>';
     }
 
     async function loadEvents() {
@@ -122,24 +122,45 @@
         try {
             // KI-Log Nr. 52: Beim Öffnen und bei jeder Aktualisierung werden
             // Termine direkt per GET aus Google Calendar geladen.
+            // KI-Log Nr. 56: Auch bereits begonnene private Google-Termine
+            // werden geladen, damit die Belegt-Zeiten vollständig sind.
             const from = new Date();
-            const to = new Date(from);
-            to.setDate(to.getDate() + 90);
-            const query = new URLSearchParams({
-                timeMin: from.toISOString(),
-                timeMax: to.toISOString(),
-                singleEvents: 'true',
-                orderBy: 'startTime',
-                maxResults: '250'
-            });
-            const response = await calendarRequest(
-                '/calendars/primary/events?' + query.toString(),
-                { method: 'GET' }
-            );
-            renderEvents(response.items || []);
+            from.setDate(from.getDate() - 90);
+            const to = new Date();
+            to.setDate(to.getDate() + 365);
+            const events = await loadAllEvents(from, to);
+            renderEvents(events);
             hideMessage();
         } catch (error) {
             showMessage(error.message, true);
+        }
+
+        async function loadAllEvents(from, to) {
+            const events = [];
+            let pageToken = null;
+
+            do {
+                const query = new URLSearchParams({
+                    timeMin: from.toISOString(),
+                    timeMax: to.toISOString(),
+                    singleEvents: 'true',
+                    orderBy: 'startTime',
+                    showDeleted: 'false',
+                    maxResults: '250'
+                });
+                if (pageToken) {
+                    query.set('pageToken', pageToken);
+                }
+
+                const response = await calendarRequest(
+                    '/calendars/primary/events?' + query.toString(),
+                    { method: 'GET' }
+                );
+                events.push(...(response.items || []));
+                pageToken = response.nextPageToken || null;
+            } while (pageToken);
+
+            return events;
         }
     }
 
@@ -202,17 +223,16 @@
 
     function renderEvents(events) {
         if (!events.length) {
-            eventsBody.innerHTML = '<tr><td colspan="4" class="empty">Keine Termine in den nächsten 90 Tagen.</td></tr>';
+            eventsBody.innerHTML = '<tr><td colspan="3" class="empty">Keine Google-Termine im geladenen Zeitraum.</td></tr>';
             return;
         }
         eventsBody.innerHTML = events.map(item => {
             const start = item.start.dateTime || item.start.date;
             const end = item.end.dateTime || item.end.date;
             return `<tr>
-                <td>${escapeHtml(item.summary || '(Ohne Titel)')}</td>
+                <td>belegt</td>
                 <td>${formatDate(start)}</td>
                 <td>${formatDate(end)}</td>
-                <td>${escapeHtml(item.location || '–')}</td>
             </tr>`;
         }).join('');
     }
