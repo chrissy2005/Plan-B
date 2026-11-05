@@ -24,6 +24,7 @@
     let googleReady = false;
     let loadingEvents = false;
     let tokenRequestPromise = null;
+    let silentConnectionAttempted = false;
 
     init();
 
@@ -37,6 +38,7 @@
         googleScript.addEventListener('load', () => {
             googleReady = true;
             statusBox.textContent = 'Bereit für die Google-Anmeldung.';
+            tryRestoreGoogleConnection();
         });
         googleScript.addEventListener('error', () => {
             showMessage('Die Google-Anmeldung konnte nicht geladen werden. Prüfe die Internetverbindung oder blockierende Browser-Erweiterungen.', true);
@@ -76,12 +78,29 @@
                 googleReady = true;
                 statusBox.textContent = 'Bereit für die Google-Anmeldung.';
                 window.clearInterval(timer);
+                tryRestoreGoogleConnection();
             } else if (Date.now() - startedAt > 10000) {
                 window.clearInterval(timer);
                 statusBox.textContent = 'Google-Anmeldung konnte nicht geladen werden.';
                 showMessage('Google Identity Services antwortet nicht. Bitte Seite mit Strg+F5 neu laden.', true);
             }
         }, 100);
+    }
+
+    async function tryRestoreGoogleConnection() {
+        if (silentConnectionAttempted || accessToken || !googleReady) return;
+        silentConnectionAttempted = true;
+        // KI-Log Nr. 65: Nach einem Seitenreload wird kein Access-Token
+        // gespeichert. Google stellt über die bestehende Browser-Anmeldung
+        // still einen neuen, kurzlebigen Token aus, sofern die Freigabe noch
+        // gültig ist.
+        try {
+            await requestGoogleToken('');
+            setConnectedState(true);
+            await loadEvents();
+        } catch (error) {
+            statusBox.textContent = 'Bitte mit Google Kalender verbinden.';
+        }
     }
 
     function formatGoogleAuthError(error) {
