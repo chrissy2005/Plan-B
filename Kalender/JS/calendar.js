@@ -148,9 +148,14 @@
     // Übersetzt eine eigene Teilaufgabe aus der API ins Kalenderformat.
     // Wird für geplante und ungeplante Teilaufgaben verwendet.
     function mapCalendarSubtask(raw) {
+        const subtaskId = raw.subtaskId ?? raw.id;
+        const longToDoId = raw.longToDoId ?? raw.longTodoId;
+        const from = raw.from ?? raw.startDateTime ?? raw.start;
+        const to = raw.to ?? raw.endDateTime ?? raw.end;
+
         if (
-            raw.subtaskId == null
-            || raw.longToDoId == null
+            subtaskId == null
+            || longToDoId == null
             || raw.projectId == null
         ) {
             throw new Error(
@@ -158,8 +163,8 @@
             );
         }
 
-        const hasStart = raw.from != null;
-        const hasEnd = raw.to != null;
+        const hasStart = from != null;
+        const hasEnd = to != null;
 
         if (hasStart !== hasEnd) {
             throw new Error(
@@ -168,11 +173,11 @@
         }
 
         const start = hasStart
-            ? parseCalendarDate(raw.from, "Beginn der Teilaufgabe")
+            ? parseCalendarDate(from, "Beginn der Teilaufgabe")
             : null;
 
         const end = hasEnd
-            ? parseCalendarDate(raw.to, "Ende der Teilaufgabe")
+            ? parseCalendarDate(to, "Ende der Teilaufgabe")
             : null;
 
         const earliestStart = parseCalendarDate(
@@ -192,8 +197,8 @@
         }
 
         return {
-            id: String(raw.subtaskId),
-            longToDoId: String(raw.longToDoId),
+            id: String(subtaskId),
+            longToDoId: String(longToDoId),
             type: "subtask",
             projectId: String(raw.projectId),
             projectName: raw.projectName || "Unbenanntes Projekt",
@@ -302,38 +307,27 @@
             "Teilaufgaben werden geladen …";
 
         try {
-            // KI-Log Nr. 69: Der aktuelle Backend-Vertrag liefert alle
-            // Kalenderdaten über GET /calendar. Der gesperrte Zusatz-Endpunkt
-            // /calendar/unscheduled-subtasks wird nicht mehr aufgerufen.
-            const weekData = await window.PlanBApi.getCalendarWeek(requestedWeek);
+            // KI-Log Nr. 69: /calendar liefert Meetings und lange To-Dos,
+            // /me/subtasks liefert alle eigenen Teilaufgaben inklusive der
+            // noch nicht eingeplanten Teilaufgaben.
+            const [weekData, ownSubtasks] = await Promise.all([
+                window.PlanBApi.getCalendarWeek(requestedWeek),
+                window.PlanBApi.getMySubtasks()
+            ]);
 
             // Eine inzwischen gestartete neuere Anfrage hat Vorrang.
             if (loadVersion !== calendarLoadVersion) {
                 return;
             }
 
-            const mappedWeek = mapCalendarWeek(weekData);
-            const unscheduledTasks = mappedWeek.subtasks.filter(task =>
-                task.start === null && task.end === null && !task.done
-            );
-
-            // Jede Teilaufgabe darf nur einmal in den Listen vorkommen.
-            const subtasks = [
-                ...mappedWeek.subtasks,
-                ...unscheduledTasks
-            ];
-
-            const uniqueIds = new Set(subtasks.map(task => task.id));
-
-            if (uniqueIds.size !== subtasks.length) {
-                throw new Error(
-                    "Die Kalenderantwort enthält doppelte Teilaufgaben."
-                );
-            }
+            const mappedWeek = mapCalendarWeek({
+                ...weekData,
+                subtasks: ownSubtasks
+            });
 
             calendarEvents = [...mappedWeek.events, ...externalCalendarEvents];
             calendarLongTodos = mappedWeek.longTodos;
-            calendarSubtasks = subtasks;
+            calendarSubtasks = mappedWeek.subtasks;
 
             renderWeek();
 
@@ -1005,8 +999,14 @@ function renderLongTodos(longTodos) {
             // Die Woche des gewählten Zeitfensters prüfen.
             // Sie kann von der gerade angezeigten Woche abweichen.
             const week = localDateValue(getMonday(start));
-            const data = await window.PlanBApi.getCalendarWeek(week);
-            const mapped = mapCalendarWeek(data);
+            const [data, ownSubtasks] = await Promise.all([
+                window.PlanBApi.getCalendarWeek(week),
+                window.PlanBApi.getMySubtasks()
+            ]);
+            const mapped = mapCalendarWeek({
+                ...data,
+                subtasks: ownSubtasks
+            });
 
             events = [...mapped.events, ...mapped.subtasks];
         }

@@ -111,12 +111,12 @@ Ungeplante Teilaufgaben gehören nicht in dieses Array.
 
 ## 2. Eigene ungeplante Teilaufgaben laden
 
-Die aktuelle Kalenderansicht verwendet diesen separaten Endpunkt nicht.
-Ungeplante Teilaufgaben werden aus der Antwort von `GET /calendar?week=...`
-gefiltert, damit die Kalenderansicht mit einer einzigen berechtigten
-Kalenderabfrage funktioniert.
+Die Kalenderansicht lädt eigene Teilaufgaben über `GET /me/subtasks`.
+Das ist notwendig, weil `GET /calendar?week=...` nur zeitlich eingeplante
+Kalenderdaten liefern kann und ungeplante Teilaufgaben dort nicht enthalten
+sind.
 
-GET /calendar/unscheduled-subtasks
+GET /me/subtasks
 
 Antwort: HTTP 200
 
@@ -174,8 +174,7 @@ Insbesondere bleiben erhalten:
 - Zugehörigkeit zum langen To-Do
 - Titel, Beschreibung, Priorität und Erledigt-Status
 
-Die offene Teilaufgabe erscheint danach wieder unter
-GET /calendar/unscheduled-subtasks.
+Die offene Teilaufgabe erscheint danach wieder unter `GET /me/subtasks`.
 
 ## Serverseitige Prüfungen beim Speichern
 
