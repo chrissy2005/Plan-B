@@ -1,6 +1,12 @@
 // KI-Log Nr. 21
 // KI-Log Nr. 44: Login-Wächter im lokalen Entwicklungsmodus deaktiviert.
 const API_URL = "https://plan-b-api-6486e78ed17c.herokuapp.com";
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/service-worker.js?v=36")
+      .catch(error => console.error("Service Worker konnte nicht aktualisiert werden:", error));
+  });
+}
 //const DEV_BYPASS_AUTH = false; // KI-Log Nr. 47: Heroku-Login aktiv.
 // Kalendervorschau lokal ausdrücklich mit ?demo=1 öffnen.
 const DEV_BYPASS_AUTH =

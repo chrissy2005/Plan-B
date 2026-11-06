@@ -4,7 +4,7 @@ const API_URL = "https://plan-b-api-6486e78ed17c.herokuapp.com"; //KI-Log Nr. 47
 if("serviceWorker" in navigator){
     window.addEventListener("load", async () => {
         try {
-            await navigator.serviceWorker.register("/service-worker.js?v=35");
+            await navigator.serviceWorker.register("/service-worker.js?v=36");
             console.log("Service Worker registriert");
         } catch (error){
             console.error("Service Worker konnte nicht registriert werden:", error);
