@@ -147,11 +147,12 @@
 
     // Übersetzt eine eigene Teilaufgabe aus der API ins Kalenderformat.
     // Wird für geplante und ungeplante Teilaufgaben verwendet.
-    function mapCalendarSubtask(raw) {
+    function mapCalendarSubtask(raw, longTodoById = new Map()) {
         const subtaskId = raw.subtaskId ?? raw.id;
         const longToDoId = raw.longToDoId ?? raw.longTodoId;
         const from = raw.from ?? raw.startDateTime ?? raw.start;
         const to = raw.to ?? raw.endDateTime ?? raw.end;
+        const parentLongTodo = longTodoById.get(String(longToDoId));
 
         if (
             subtaskId == null
@@ -181,12 +182,16 @@
             : null;
 
         const earliestStart = parseCalendarDate(
-            raw.earliestStart,
+            raw.earliestStart
+                ?? raw.longToDoStartDateTime
+                ?? (parentLongTodo && parentLongTodo.start),
             "Beginn des langen To-Dos"
         );
 
         const deadline = parseCalendarDate(
-            raw.deadline,
+            raw.deadline
+                ?? raw.longToDoEndDateTime
+                ?? (parentLongTodo && parentLongTodo.end),
             "Frist des langen To-Dos"
         );
 
@@ -216,7 +221,11 @@
         };
     }
 
-    function mapCalendarWeek(data) {
+    function mapCalendarWeek(
+        data,
+        subtasks = data.subtasks,
+        longTodosForSubtasks = data.longToDos
+    ) {
         const events = data.meetings.map(raw => ({
             id: String(raw.meetingId),
             type: "meeting",
@@ -252,9 +261,15 @@
             };
         });
 
-        const subtasks = data.subtasks.map(mapCalendarSubtask);
+        const longTodoById = new Map(longTodosForSubtasks.map(todo => [
+            String(todo.longToDoId ?? todo.id),
+            todo
+        ]));
+        const mappedSubtasks = subtasks.map(raw =>
+            mapCalendarSubtask(raw, longTodoById)
+        );
 
-        return { events, longTodos, subtasks };
+        return { events, longTodos, subtasks: mappedSubtasks };
     }
 
     function setCalendarLoading(loading) {
@@ -310,9 +325,10 @@
             // KI-Log Nr. 69: /calendar liefert Meetings und lange To-Dos,
             // /me/subtasks liefert alle eigenen Teilaufgaben inklusive der
             // noch nicht eingeplanten Teilaufgaben.
-            const [weekData, ownSubtasks] = await Promise.all([
+            const [weekData, ownSubtasks, ownLongTodos] = await Promise.all([
                 window.PlanBApi.getCalendarWeek(requestedWeek),
-                window.PlanBApi.getMySubtasks()
+                window.PlanBApi.getMySubtasks(),
+                window.PlanBApi.getMyLongTodos()
             ]);
 
             // Eine inzwischen gestartete neuere Anfrage hat Vorrang.
@@ -320,10 +336,11 @@
                 return;
             }
 
-            const mappedWeek = mapCalendarWeek({
-                ...weekData,
-                subtasks: ownSubtasks
-            });
+            const mappedWeek = mapCalendarWeek(
+                weekData,
+                ownSubtasks,
+                ownLongTodos
+            );
 
             calendarEvents = [...mappedWeek.events, ...externalCalendarEvents];
             calendarLongTodos = mappedWeek.longTodos;
@@ -999,14 +1016,12 @@ function renderLongTodos(longTodos) {
             // Die Woche des gewählten Zeitfensters prüfen.
             // Sie kann von der gerade angezeigten Woche abweichen.
             const week = localDateValue(getMonday(start));
-            const [data, ownSubtasks] = await Promise.all([
+            const [data, ownSubtasks, ownLongTodos] = await Promise.all([
                 window.PlanBApi.getCalendarWeek(week),
-                window.PlanBApi.getMySubtasks()
+                window.PlanBApi.getMySubtasks(),
+                window.PlanBApi.getMyLongTodos()
             ]);
-            const mapped = mapCalendarWeek({
-                ...data,
-                subtasks: ownSubtasks
-            });
+            const mapped = mapCalendarWeek(data, ownSubtasks, ownLongTodos);
 
             events = [...mapped.events, ...mapped.subtasks];
         }
