@@ -22,9 +22,9 @@
     color: #993556;
 }
 
-.topbar .logo svg {
-    width: 20px;
-    height: 20px;
+.topbar .logo img {
+    width: 34px;
+    height: 34px;
 }
 
 .topbar .nav {

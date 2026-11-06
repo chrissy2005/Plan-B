@@ -1,4 +1,4 @@
-const CACHE_NAME = "project-app-v34";
+const CACHE_NAME = "project-app-v35";
 
 const APP_SHELL = [
     "/",
@@ -28,6 +28,7 @@ const APP_SHELL = [
     "/icons/eye-slash.svg",
     "/icons/eye.svg",
     "/Projekte/JS/offline-db.js",
+    "/icons/plan-b.svg",
     "/Kalender/HTML/calender.html",
     "/Kalender/JS/calendar.js",
     "/Kalender/CSS/calendar.css"

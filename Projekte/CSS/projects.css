@@ -35,7 +35,7 @@ a { color: inherit; }
 /* KI-Log Nr. 38 | ---------- Kopfzeile / Navigation ---------- */
 .topbar { display: flex; align-items: center; gap: 28px; height: 72px; padding: 0 24px; border-bottom: 2px solid var(--accent); background: #fff; }
 .logo { display: grid; place-items: center; flex: none; width: 46px; height: 46px; border: 2px solid var(--accent); border-radius: var(--radius); color: var(--accent); }
-.logo svg { width: 20px; height: 20px; }
+.logo img { width: 34px; height: 34px; display: block; }
 .nav { display: flex; align-items: center; gap: 6px; }
 .nav a { padding: 9px 14px; border: 2px solid transparent; border-radius: var(--radius); font-size: 16px; text-decoration: none; white-space: nowrap; }
 .nav a:hover { border-color: var(--border); color: var(--accent); }
