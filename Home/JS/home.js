@@ -121,45 +121,13 @@
     }
 
     function renderRecentlyDoneTasks() {
-        const since = Date.now() -
-            7 * 24 * 60 * 60 * 1000;
-
-        const doneTasks = currentTasks
-            .filter(task => {
-                if (!task.done) {
-                    return false;
-                }
-
-                const completedAt =
-                    task.doneAt ||
-                    task.completedAt;
-
-                if (!completedAt) {
-                    return false;
-                }
-
-                return new Date(completedAt).getTime()
-                    >= since;
-            })
-            .sort((a, b) => {
-                const dateA =
-                    a.doneAt ||
-                    a.completedAt ||
-                    '';
-
-                const dateB =
-                    b.doneAt ||
-                    b.completedAt ||
-                    '';
-
-                return dateB.localeCompare(dateA);
-            });
+        const doneTasks = currentTasks.filter(task => task.done).sort(sortByStartOrEnd);
 
         if (!doneTasks.length) {
             doneTaskBody.innerHTML = `
                 <tr>
                     <td colspan="5" class="empty">
-                        In den letzten 7 Tagen wurde nichts erledigt.
+                        Es wurden noch keine Aufgaben erledigt.
                     </td>
                 </tr>
             `;
@@ -186,9 +154,6 @@
     }
 
     function renderDoneRow(task) {
-        const completedAt =
-            task.doneAt ||
-            task.completedAt;
 
         return `
             <tr>
@@ -197,7 +162,7 @@
                 </td>
                 <td>${escapeHtml(typeLabel(task))}</td>
                 <td>${escapeHtml(task.projectName || '–')}</td>
-                <td>${formatDate(completedAt)}</td>
+                <td>Erledigt</td>
                 <td>${escapeHtml(priorityLabel(task))}</td>
             </tr>
         `;
