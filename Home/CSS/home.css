@@ -157,7 +157,9 @@
 
 #dashboardFilters .field {
     display: grid;
+    grid-template-rows: auto 52px 18px;
     gap: 6px;
+    align-content: start;
 }
 
 #dashboardFilters label {
@@ -181,8 +183,17 @@
 }
 
 #dashboardFilters small {
+    display: block;
+    min-height: 18px;
     color: var(--muted);
     font-size: 12px;
+    line-height: 18px;
+}
+
+#dashboardFilters .field:not(:has(small))::after {
+    content: "";
+    display: block;
+    min-height: 18px;
 }
 
 #dashboardFilters .btn {
