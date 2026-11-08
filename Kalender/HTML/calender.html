@@ -16,7 +16,7 @@
     <script src="/Projekte/JS/offline-db.js" defer></script>
     <script src="/Projekte/JS/api.js" defer></script>
     <script src="/Projekte/JS/ui.js" defer></script>
-    <script src="/Home/JS/menu.js" defer></script>
+    <script src="../../Home/JS/menu.js?v=31" defer></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="../JS/google-calendar-sync.js?v=32" defer></script>
 
@@ -25,16 +25,19 @@
 </head>
 <body>
     <header class="topbar">
-        <a class="logo" href="/Home/HTML/index.html" aria-label="Plan B Startseite">
+        <a class="logo" href="../../Home/HTML/index.html?v=31" aria-label="Plan B Startseite">
             <img src="../../icons/plan-b.svg?v=31" alt="" aria-hidden="true">
         </a>
         <nav class="nav" aria-label="Hauptnavigation">
-            <a href="/Home/HTML/index.html">Home</a>
-            <a href="/Projekte/HTML/projects.html">Projekte</a>
-            <a href="/Kalender/HTML/calender.html" aria-current="page">Kalender</a>
+            <a href="../../Home/HTML/index.html">Home</a>
+            <a href="../../Projekte/HTML/projects.html">Projekte</a>
+            <a href="calender.html?v=31" aria-current="page">Kalender</a>
         </nav>
         <div class="user-area">
-            <span class="user-name" id="currentUserName"></span>
+            <span class="user-details">
+                <span class="user-name" id="currentUserName"></span>
+                <span class="user-role" id="currentUserRole"></span>
+            </span>
             <button class="btn" type="button" id="logoutButton">Abmelden</button>
         </div>
     </header>

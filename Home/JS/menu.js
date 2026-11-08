@@ -40,4 +40,46 @@ async function logout() {
   sessionStorage.removeItem("token");
   window.location.replace("../../Login/HTML/login.html?v=31");
 }
+
+function formatHeaderRole(user) {
+  const role = String(user && (user.role || user.function || user.position) || '').toUpperCase();
+  if (['PROJECT_LEADER', 'PROJECT_MANAGER', 'PROJEKTLEITER', 'PROJEKTLEITUNG'].includes(role)) {
+    return 'Projektleitung';
+  }
+  if (['MEMBER', 'TEAMMITGLIED'].includes(role)) {
+    return 'Teammitglied';
+  }
+  return 'Teammitglied';
+}
+
+function formatHeaderName(user) {
+  const firstName = String(user && (user.firstName || user.firstname) || '').trim();
+  const lastName = String(user && (user.lastName || user.lastname) || '').trim();
+  return user && (user.name || user.displayName)
+    || [firstName, lastName].filter(Boolean).join(' ')
+    || user && user.email
+    || 'Benutzer';
+}
+
+async function initSharedHeader() {
+  const logoutButton = document.getElementById('logoutButton');
+  if (logoutButton && !logoutButton.dataset.bound) {
+    logoutButton.dataset.bound = 'true';
+    logoutButton.addEventListener('click', () => void logout());
+  }
+
+  const api = window.PlanBApi;
+  if (!api || typeof api.getCurrentUser !== 'function') return;
+  try {
+    const user = await api.getCurrentUser();
+    const name = document.getElementById('currentUserName');
+    const role = document.getElementById('currentUserRole');
+    if (name) name.textContent = formatHeaderName(user);
+    if (role) role.textContent = formatHeaderRole(user);
+  } catch (error) {
+    console.warn('Kopfzeile konnte nicht geladen werden:', error);
+  }
+}
+
+window.addEventListener('DOMContentLoaded', initSharedHeader);
  
