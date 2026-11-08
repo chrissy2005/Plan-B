@@ -3,7 +3,7 @@
 const API_URL = "https://plan-b-api-6486e78ed17c.herokuapp.com";
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/service-worker.js?v=36")
+    navigator.serviceWorker.register("../../service-worker.js?v=36")
       .catch(error => console.error("Service Worker konnte nicht aktualisiert werden:", error));
   });
 }
@@ -65,13 +65,35 @@ function getTokenUser() {
   try {
     const token = sessionStorage.getItem('token');
     if (!token) return null;
-    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    const encodedPayload = token.split('.')[1];
+    if (!encodedPayload) return null;
+    const payload = JSON.parse(atob(encodedPayload.replace(/-/g, '+').replace(/_/g, '/')
+      .padEnd(Math.ceil(encodedPayload.length / 4) * 4, '=')));
     return {
       name: payload.name || payload.preferred_username || payload.email,
       email: payload.email || ''
     };
   } catch (error) {
     console.warn('Benutzername konnte nicht aus der Sitzung gelesen werden:', error);
+    return null;
+  }
+}
+
+async function loadHeaderUser() {
+  const token = sessionStorage.getItem('token');
+  if (!token) return null;
+  try {
+    const response = await fetch(API_URL + '/users/me', {
+      headers: {
+        Accept: 'application/json',
+        Authorization: 'Bearer ' + token
+      }
+    });
+    if (!response.ok) return null;
+    const raw = await response.json();
+    return raw.user || raw.data || raw;
+  } catch (error) {
+    console.warn('Benutzerdaten konnten nicht geladen werden:', error);
     return null;
   }
 }
@@ -86,13 +108,12 @@ async function initSharedHeader() {
   const name = document.getElementById('currentUserName');
   const role = document.getElementById('currentUserRole');
   const tokenUser = getTokenUser();
-  if (name && tokenUser) name.textContent = formatHeaderName(tokenUser);
-  if (role) role.textContent = formatHeaderRole(tokenUser);
+  if (name) name.textContent = formatHeaderName(tokenUser || {});
+  if (role) role.textContent = formatHeaderRole(tokenUser || {});
 
-  const api = window.PlanBApi;
-  if (!api || typeof api.getCurrentUser !== 'function') return;
   try {
-    const user = await api.getCurrentUser();
+    const user = await loadHeaderUser();
+    if (!user) return;
     if (name) name.textContent = formatHeaderName(user);
     if (role) role.textContent = formatHeaderRole(user);
   } catch (error) {
