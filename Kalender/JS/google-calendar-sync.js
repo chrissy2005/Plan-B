@@ -3,8 +3,8 @@
 
     const CLIENT_ID =
         "152574630222-bn4nmk4s5q8hf7rouol53rcj0lsscc7r.apps.googleusercontent.com";
-    const SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
-    const BACKEND_API = "https://plan-b-api-6486e78ed17c.herokuapp.com";
+    const SCOPE = "https://www.googleapis.com/auth/calendar";
+    const API = "https://www.googleapis.com/calendar/v3";
     const connectButton = document.getElementById("googleConnect");
     const disconnectButton = document.getElementById("googleDisconnect");
     const reloadButton = document.getElementById("reloadCalendar");
@@ -57,33 +57,33 @@
         });
     }
 
-    async function requestBusy(timeMin, timeMax) {
-        const planbToken = sessionStorage.getItem("token");
-        if (!planbToken) {
-            throw new Error("Ihre Anmeldung ist abgelaufen.");
-        }
-        const response = await fetch(BACKEND_API + "/integrations/google-calendar/busy", {
-            method: "POST",
+    async function request(path, options) {
+        const response = await fetch(API + path, {
+            method: options.method || "GET",
             cache: "no-store",
             headers: {
                 Accept: "application/json",
-                "Content-Type": "application/json",
-                Authorization: "Bearer " + planbToken,
-                "X-Google-Access-Token": accessToken
+                Authorization: "Bearer " + accessToken,
+                ...(options.body ? { "Content-Type": "application/json" } : {})
             },
-            body: JSON.stringify({ timeMin, timeMax })
+            body: options.body ? JSON.stringify(options.body) : undefined
         });
         const data = await response.json().catch(() => null);
         if (!response.ok) {
-            throw new Error(
-                data && (data.message || data.error)
-                || "Google Calendar HTTP " + response.status
-            );
+            const detail = data && data.error && data.error.message;
+            throw new Error(detail || "Google Calendar HTTP " + response.status);
         }
         return data;
     }
 
     async function loadBusy() {
+        const calendars = await request(
+            "/users/me/calendarList?minAccessRole=reader&maxResults=250",
+            {}
+        );
+        const items = (calendars.items || [])
+            .filter(calendar => ["owner", "writer", "reader"].includes(calendar.accessRole))
+            .map(calendar => ({ id: calendar.id }));
         const start = new Date();
         start.setDate(start.getDate() - 90);
         const end = new Date();
@@ -93,11 +93,19 @@
             const rangeEnd = new Date(
                 Math.min(rangeStart.getTime() + 90 * 86400000, end.getTime())
             );
-            const response = await requestBusy(
-                rangeStart.toISOString(),
-                rangeEnd.toISOString()
-            );
-            (response.periods || []).forEach(period => periods.push(period));
+            for (let offset = 0; offset < items.length; offset += 50) {
+                const response = await request("/freeBusy", {
+                    method: "POST",
+                    body: {
+                        timeMin: rangeStart.toISOString(),
+                        timeMax: rangeEnd.toISOString(),
+                        items: items.slice(offset, offset + 50)
+                    }
+                });
+                Object.values(response.calendars || {}).forEach(calendar => {
+                    (calendar.busy || []).forEach(period => periods.push(period));
+                });
+            }
             rangeStart = rangeEnd;
         }
         document.dispatchEvent(new CustomEvent("planb:google-busy-updated", {
