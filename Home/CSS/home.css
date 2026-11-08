@@ -20,17 +20,13 @@
     border: 2px solid #993556;
     border-radius: 6px;
     color: #993556;
+    background: #fff url("../../icons/plan-b.svg?v=31") center / 34px 34px no-repeat;
+    overflow: hidden;
 }
 
-.topbar .logo svg {
-    width: 20px;
-    height: 20px;
-}
-
+.topbar .logo svg,
 .topbar .logo img {
-    width: 34px;
-    height: 34px;
-    display: block;
+    display: none;
 }
 
 .topbar .nav {
