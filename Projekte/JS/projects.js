@@ -1,8 +1,4 @@
-/* =====================================================================
-   Plan B - Projektuebersicht "Meine Projekte"
-   KI-Log Nr. 31
-   Backend-Aufrufe: api.getProjects(), api.createProject()  (siehe api.js)
-   ===================================================================== */
+// KI-Log Nr. 31
 (function () {
   'use strict';
 

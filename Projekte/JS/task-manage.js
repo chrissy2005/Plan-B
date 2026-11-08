@@ -1,9 +1,4 @@
-/* =====================================================================
-   Plan B - Task verwalten (task-manage.html?id=...)
-   KI-Log Nr. 36
-   Nur fuer die Projektleitung: Tasks bearbeiten (inkl. Teilaufgaben) und loeschen.
-   Backend-Aufrufe: getProject, getTasks, updateTask, deleteTask (siehe api.js)
-   ===================================================================== */
+// KI-Log Nr. 36
 (function () {
   'use strict';
 

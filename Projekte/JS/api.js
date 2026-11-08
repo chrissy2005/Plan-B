@@ -1,25 +1,4 @@
-/* =====================================================================
-   Plan B - API-Schicht fuer den Bereich "Projekte"
-   KI-Log Nr. 37
-   ---------------------------------------------------------------------
-   Alle Projektseiten sprechen NUR ueber diese Datei mit dem Backend.
-   Solange USE_MOCK = true ist, laufen die Seiten mit Testdaten aus den
-   Wireframes (in sessionStorage, damit Aenderungen beim Seitenwechsel bleiben).
-
-   BACKEND EINBINDEN - an allen Stellen mit "BACKEND:" markiert:
-     1. API_BASE auf Eure Server-URL setzen.
-     2. TOKEN_KEY an login.js angleichen (dort wird der Token gespeichert).
-     3. USE_MOCK = false setzen.
-     4. Pro Funktion Pfad, Methode und Feldnamen mit Eurem API-Design abgleichen.
-     5. Backend-CORS muss die Frontend-Origin sowie Authorization und Content-Type erlauben.
-
-   Erwartete Feldwerte (Enums):
-     role:     'MEMBER' | 'PROJECT_LEADER'
-     status:   'ACTIVE' | 'COMPLETED'
-     type:     'MEETING' | 'LANGES_TODO'
-     priority: 'HOCH' | 'MITTEL' | 'NIEDRIG'
-     Datum/Zeit: 'YYYY-MM-DDTHH:mm' (lokale Zeit, ohne Zeitzone)
-   ===================================================================== */
+// KI-Log Nr. 37
 (function () {
   'use strict';
 
@@ -722,29 +701,8 @@ async getMySubtasks(filters = {}) {
 
     // KI-Log Nr. 66: GET liefert die Members-Antwort und protokolliert nur JSON-Fachdaten.
     
-    /*async getMembers(projectId) {
-      if (USE_MOCK) return mock.getProject(projectId).then(project => project.members || []);
-      const encodedProjectId = encodeURIComponent(projectId);
-      let raw;
-      try {
-        raw = await request('GET', '/project/' + encodedProjectId + '/members');
-      } catch (error) {
-        if (!(error instanceof ApiError) || error.status !== 404) throw error;
-        // KI-Log Nr. 68: Der aktuelle Backend-Stand verwendet den pluralen Projektpfad.
-        raw = await request('GET', '/projects/' + encodedProjectId + '/members');
-      }
-      console.info('[KI-Log Nr. 66] GET members response JSON:', JSON.stringify(raw, null, 2));
-      const data = raw && (raw.data || raw);
-      const members = Array.isArray(data) ? data : (data.members || data.items || []);
-      return members.map(member => ({
-        ...member,
-        userId: String(member.userId ?? member.memberId ?? member.id ?? ''),
-        name: member.name || [member.firstName, member.lastName].filter(Boolean).join(' ') || member.email || '',
-        email: member.email || '',
-        role: normalizeRole(member.role)
-      }));
-    },
-    */
+    // // KI-Log Nr. 68: Der aktuelle Backend-Stand verwendet den pluralen Projektpfad.
+// console.info('[KI-Log Nr. 66] GET members response JSON:', JSON.stringify(raw, null, 2));
 
     
     async getMembers(projectId) {
@@ -887,25 +845,7 @@ async getMySubtasks(filters = {}) {
     },
 
     // KI-Log Nr. 75: Long-To-Do-GET liest den API-Wrapper longTodos und optionale Filter.
-    /*old Method without Offline-Fallback
-    async getLongTodos(projectId, filters) {
-      if (USE_MOCK) return mock.getTasks(projectId).then(tasks => tasks.filter(task => task.type === 'LANGES_TODO'));
-      const params = new URLSearchParams();
-      if (filters && filters.priority) params.set('priority', toApiPriority(filters.priority));
-      if (filters && filters.done !== undefined && filters.done !== null) {
-        params.set('done', toBoolean(filters.done) ? 'true' : 'false');
-      }
-      if (filters && filters.sort) params.set('sort', String(filters.sort));
-      const query = params.toString();
-      const path = '/projects/' + encodeURIComponent(projectId) + '/long-todos' + (query ? '?' + query : '');
-      const raw = await request('GET', path);
-      console.info('[KI-Log Nr. 75] GET long-todos response JSON:', JSON.stringify(raw, null, 2));
-      const data = raw && (raw.data || raw);
-      const list = Array.isArray(data)
-        ? data
-        : (Array.isArray(data && data.longTodos) ? data.longTodos : (data && data.items) || []);
-      return list.map(normalizeLongTodo);
-    },*/
+    // console.info('[KI-Log Nr. 75] GET long-todos response JSON:', JSON.stringify(raw, null, 2));
 
     
     async getLongTodos(projectId, filters){

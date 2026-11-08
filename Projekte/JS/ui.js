@@ -1,10 +1,4 @@
-/* =====================================================================
-   Plan B - gemeinsame UI-Hilfsfunktionen fuer den Bereich "Projekte"
-   KI-Log Nr. 38
-   Enthaelt: Escaping, Datumsformate, Modals, Toast, Kopfzeile,
-             Teilnehmer-Auswahl (Chips) und Teilaufgaben-Editor.
-   Hier gibt es KEINE Backend-Aufrufe ausser in initTopbar() (ueber api.js).
-   ===================================================================== */
+// KI-Log Nr. 38
 (function () {
   'use strict';
 

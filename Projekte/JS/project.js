@@ -1,15 +1,4 @@
-/* =====================================================================
-   Plan B - Projektansicht (project.html?id=...)
-   KI-Log Nr. 32 Projektansicht, Nr. 33 Mitglieder, Nr. 34 Neue Aufgabe,
-   Nr. 35 Langes To-Do / Teilaufgabe / Uebernehmen-Konflikt
-   ---------------------------------------------------------------------
-   Rollen-Logik wie in den Wireframes:
-   - Projektleitung (S. 4): "Projekt bearbeiten", "Task verwalten",
-     "+ Task anlegen", Stift an der Mitglieder-Karte, Fortschritt als Text
-   - Teammitglied (S. 3): Teilaufgaben aufklappbar, "Uebernehmen",
-     Fortschritt als Balken
-   Alle Backend-Aufrufe laufen ueber window.PlanBApi (api.js).
-   ===================================================================== */
+// KI-Log Nr. 32 Projektansicht, Nr. 33 Mitglieder, Nr. 34 Neue Aufgabe,
 (function () {
   'use strict';
 
@@ -758,7 +747,7 @@
     });
   }
 
-  /* KI-Log Nr. 39 | ================= Teilaufgabe einplanen (S. 15) ================= */
+  // /* KI-Log Nr. 39 | ================= Teilaufgabe einplanen (S. 15) ================= */
 
   async function openSchedule(taskId, subId) {
     const task = findTask(taskId);
