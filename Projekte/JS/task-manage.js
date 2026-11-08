@@ -20,7 +20,7 @@
     bindEvents();
     state.me = await ui.initTopbar(api);
     if (!state.me) {
-      try { state.me = await api.getCurrentUser(); } catch (error) { /* page guard below renders any useful error */ }
+      try { state.me = await api.getCurrentUser(); } catch (error) {  }
     }
     if (!projectId) { showPageError('Kein Projekt ausgewählt.'); return; }
     $('#backToProject').href = 'project.html?id=' + encodeURIComponent(projectId);
@@ -38,7 +38,7 @@
   }
 
   async function loadData() {
-    // BACKEND: Projekt, Mitglieder, Meetings und Long-ToDos sind getrennte Ressourcen.
+    
     const results = await Promise.allSettled([
       api.getProject(projectId),
       api.getTasks(projectId),
@@ -77,7 +77,7 @@
     return task.participantIds.length ? task.participantIds.map(memberName).join(', ') : '–';
   }
 
-  /* ---------- Tabelle ---------- */
+  
 
   function render() {
     const p = state.project;
@@ -112,7 +112,7 @@
     }).join('');
   }
 
-  /* ---------- Task bearbeiten (S. 10) ---------- */
+  
 
   function openEditor(taskId) {
     const task = state.tasks.find(t => t.id === taskId);
@@ -231,7 +231,7 @@
     }
   }
 
-  /* ---------- Events ---------- */
+  
 
   function bindEvents() {
     $('#manageBody').addEventListener('click', event => {

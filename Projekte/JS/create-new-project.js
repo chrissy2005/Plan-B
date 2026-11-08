@@ -57,7 +57,7 @@ form.addEventListener("submit", async (event) => {
     return;
   }
  
-  btnSpeichern.disabled = true; // verhindert doppeltes Anlegen
+  btnSpeichern.disabled = true; 
   try {
     const response = await fetch(`${API_URL}/projects`, {
       method: "POST",

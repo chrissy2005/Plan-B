@@ -38,7 +38,7 @@
 
   init();
 
-  /* ================= Laden ================= */
+  
 
   async function init() {
     bindEvents();
@@ -48,7 +48,7 @@
       return;
     }
     try {
-      //new part for offline-Fallback
+      
       try{
         state.me = await ui.initTopbar(api);
       } catch(error){
@@ -67,7 +67,7 @@
           }
       } 
       await loadData();
-      // Lange To-Dos sind beim ersten Laden aufgeklappt
+      
       state.tasks.filter(t => t.type === 'LANGES_TODO').forEach(t => state.expanded.add(t.id));
       render();
       $('#projectView').hidden = false;
@@ -77,7 +77,7 @@
   }
 
   async function loadData() {
-    // BACKEND: Projekt, Mitglieder, Meetings und Long-ToDos sind getrennte Ressourcen.
+    
     const results = await Promise.allSettled([
       api.getProject(projectId),
       api.getTasks(projectId),
@@ -85,7 +85,7 @@
     ]);
 
     // KI-Log Nr. 50: Fehler werden dem konkreten Request zugeordnet,
-    // damit ein fehlender Unter-Endpunkt nicht als Berechtigungsfehler erscheint.
+    
     const requestNames = ['Projekt', 'Meetings und Long-ToDos', 'Projektmitglieder'];
     const failedIndex = results.findIndex(result => result.status === 'rejected');
     if (failedIndex !== -1) {
@@ -121,7 +121,7 @@
     $('#projectView').hidden = true;
   }
 
-  /* ================= Hilfsfunktionen ================= */
+  
 
   const findTask = id => state.tasks.find(t => t.id === id);
   const findSub = (task, id) => (task ? task.subtasks.find(s => s.id === id) : null);
@@ -133,7 +133,7 @@
   function nameWithYou(userId) { return memberName(userId) + (state.me && userId === state.me.id ? ' (du)' : ''); }
 
   function isParticipant(task) {
-    //now with offline fallback when state.me.id is empty
+    
     const currentUserId = state.me && state.me.id;
     const participantIds = task.participantIds || task.assignedMemberIds || [];
     return Boolean(task.allParticipants || ( currentUserId && participantIds.includes(String(currentUserId))));
@@ -154,7 +154,7 @@
 
   function byStart(a, b) { return (a.start || a.end || '').localeCompare(b.start || b.end || ''); }
 
-  /* ================= Rendern ================= */
+  
 
   function render() {
     renderHeader();
@@ -237,7 +237,7 @@
       </tr>`;
   }
 
-  // Teilaufgaben-Zeilen nur in der Teammitglied-Ansicht (Wireframe S. 3)
+  
   function subtaskRows(task) {
     if (state.isLead || task.type !== 'LANGES_TODO' || !state.expanded.has(task.id)) return '';
     return task.subtasks.map(sub => {
@@ -271,7 +271,7 @@
     }).join('');
   }
 
-  /* ================= Detail: Langes To-Do / Meeting (S. 9) ================= */
+  
 
   function openTaskDetail(taskId) {
     state.detailTaskId = taskId;
@@ -336,7 +336,7 @@
       </div>`;
   }
 
-  /* ================= Detail: Teilaufgabe (S. 13) + Konflikt (S. 14) ================= */
+  
 
   function openSubtask(taskId, subId, conflictName) {
     state.subtaskRef = { taskId, subId };
@@ -395,7 +395,7 @@
       `;
   }
 
-  /* ================= Aktionen To-Dos ================= */
+  
 
   async function toggleTaskDone(checkbox) {
     const checked = checkbox.checked;
@@ -469,7 +469,7 @@
     });
   }
 
-  /* ================= Mitglieder (S. 7) ================= */
+  
 
   async function openMembers() {
     try {
@@ -504,7 +504,7 @@
     if (!window.confirm(question)) return;
     await ui.withBusy(button, async () => {
       try {
-        // BACKEND: DELETE /projects/{projectId}/members/{userId}
+        
         await api.removeMember(projectId, userId);
         if (self) { window.location.href = 'projects.html'; return; }
         ui.toast(`${name} wurde entfernt.`);
@@ -545,7 +545,7 @@
     });
   }
 
-  /* ================= Mitglied hinzufügen (S. 8) ================= */
+  
 
   function openInvite() {
     if (!state.isLead) { ui.toast('Nur die Projektleitung darf Mitglieder hinzufügen.', true); return; }
@@ -569,7 +569,7 @@
     }
     await ui.withBusy($('#inviteSubmit'), async () => {
       try {
-        // BACKEND: POST /projects/{projectId}/members; Token liegt nur im Header.
+        
         await api.addMember(projectId, { email, role });
         ui.closeModal('inviteModal');
         ui.toast(`${email} wurde als Mitglied hinzugefügt.`);
@@ -582,7 +582,7 @@
     });
   }
 
-  /* ================= Projekt bearbeiten ================= */
+  
 
   function openEditProject() {
     const form = $('#editProjectForm');
@@ -609,7 +609,7 @@
     }
     await ui.withBusy($('#editProjectSubmit'), async () => {
       try {
-        // BACKEND: PATCH /projects/{projectId}  { title, description, status }
+        
         await api.updateProject(projectId, data);
         ui.closeModal('editProjectModal');
         ui.toast('Projekt gespeichert.');
@@ -620,7 +620,7 @@
     });
   }
 
-  /* ================= Neue Aufgabe (S. 11) ================= */
+  
 
   function openNewTask() {
     const form = $('#newTaskForm');
@@ -681,7 +681,7 @@
 
     await ui.withBusy(button, async () => {
       try {
-        // BACKEND: POST /availability  { userIds, start, end }  (Daten aus dem externen Kalender)
+        
         const result = await api.checkAvailability(projectId, { userIds, start: times.start, end: times.end });
         const unavailableMembers = result.unavailableMembers || [];
         if(result.available){
@@ -775,7 +775,7 @@
     $('#freeSlotList').innerHTML = '<p class="empty">Freie Zeiten werden geladen …</p>';
     ui.openModal('scheduleModal');
     try {
-      // BACKEND: GET /availability/free-slots?userId={me}&until={task.end}
+      
       const slots = await api.getFreeSlots(state.me.id, (task.end || '').slice(0, 10));
       $('#freeSlotList').innerHTML = slots.length ? slots.map((slot, i) => `
         <label class="slot-option"><input type="radio" name="freeSlot" value="${i}" data-date="${esc(slot.date)}" data-from="${esc(slot.from)}" data-to="${esc(slot.to)}">
@@ -812,7 +812,7 @@
     });
   }
 
-  /* ================= Events ================= */
+  
 
   function handleClick(event) {
     const el = event.target.closest('[data-action]');

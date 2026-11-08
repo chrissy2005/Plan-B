@@ -1,11 +1,11 @@
-/* Zentrale Maße für das Kalenderlayout */
+
 .calendar-page {
     --calendar-hour-height: 60px;
     --calendar-time-width: 64px;
     --calendar-min-width: 764px;
 }
 
-/* Überschrift und Wochenwechsel */
+
 .calendar-header {
     display: flex;
     flex-wrap: wrap;
@@ -45,7 +45,7 @@
     text-align: center;
 }
 
-/* Kalender links, Teilaufgaben rechts */
+
 .calendar-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 280px;
@@ -61,7 +61,7 @@
     background: #fff;
 }
 
-/* Gleiche Breite und Platz für den Scrollbalken in allen Bereichen */
+
 .calendar-day-headers,
 .calendar-long-todos,
 .calendar-scroll-area {
@@ -74,7 +74,7 @@
     overflow-y: hidden;
 }
 
-/* Erste Spalte für Uhrzeiten, danach sieben gleich breite Tage */
+
 .calendar-day-headers {
     display: grid;
     grid-template-columns:
@@ -96,7 +96,7 @@
     color: #fff;
 }
 
-/* Bereich für die mehrtägigen Balken */
+
 .calendar-long-todos {
     display: grid;
     grid-template-columns: var(--calendar-time-width) minmax(0, 1fr);
@@ -121,7 +121,7 @@
     border-left: 1px solid var(--line);
 }
 
-/* Sichtbarer Ausschnitt des 24-Stunden-Rasters */
+
 .calendar-scroll-area {
     height: 600px;
     max-height: 65vh;
@@ -157,7 +157,7 @@
     min-width: 0;
     border-left: 1px solid var(--line);
 
-    /* Eine horizontale Linie pro Stunde */
+    
     background-image: repeating-linear-gradient(
         to bottom,
         var(--line) 0,
@@ -171,7 +171,7 @@
     background-color: #fff8fb;
 }
 
-/* Rechte Seitenleiste */
+
 .calendar-sidebar {
     padding: 18px;
 }
@@ -185,7 +185,7 @@
     font-size: 14px;
 }
 
-/* Rückmeldungen, beispielsweise bei Ladefehlern */
+
 #calendarMessage {
     padding: 12px 16px;
     border: 1px solid var(--border);
@@ -193,7 +193,7 @@
     background: #fff;
 }
 
-/* Auf schmalen Bildschirmen steht die Seitenleiste darunter */
+
 @media (max-width: 1100px) {
     .calendar-layout {
         grid-template-columns: minmax(0, 1fr);
@@ -215,7 +215,7 @@
     }
 }
 
-/* Sorgt auch ohne das gemeinsame Stylesheet für genaue Abmessungen. */
+
 .calendar-page,
 .calendar-page *,
 .calendar-page *::before,
@@ -494,7 +494,7 @@
     overflow-wrap: anywhere;
 }
 
-/* Legende der aktuell unterstützten Eintragstypen */
+
 .calendar-legend {
     display: flex;
     flex-wrap: wrap;

@@ -89,26 +89,8 @@ self.addEventListener("fetch", (event) => {
         );
         return;
     }
-    /* old Code without catching heroku server not available error
-    if(request.mode === "navigate") {
-        event.respondWith(
-            fetch(request).catch(async () => {
-                const cached = await caches.match(request);
-                if(cached) return cached;
-                const offlinePage = await caches.match("/offline.html");
-                if(offlinePage) return offlinePage;
-                return new Response("Diese Seite ist offline nicht verfügbar.", {status: 503, headers: {"Content-Type": "text/plain; charset=utf-8"}} );
-            })
-        );
-        return;
-    }
-    event.respondWith(
-        caches.match(request).then((cachedResponse) => {
-            if(cachedResponse) return cachedResponse;
-            return fetch(request);
-        })
-    ); */
-    //new Code that catches the heroku server not available error, so that the cache can be load
+    
+    
     if(request.mode === "navigate") {
         event.respondWith(
             fetch(request).then(response => {

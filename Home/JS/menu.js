@@ -8,7 +8,7 @@ if ("serviceWorker" in navigator) {
   });
 }
 //const DEV_BYPASS_AUTH = false; // KI-Log Nr. 47: Heroku-Login aktiv.
-// Kalendervorschau lokal ausdrücklich mit ?demo=1 öffnen.
+
 const DEV_BYPASS_AUTH =
   ["localhost", "127.0.0.1"].includes(window.location.hostname)
   && window.location.pathname === "/Kalender/HTML/calender.html"

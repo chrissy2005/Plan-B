@@ -11,7 +11,7 @@
   const $ = (selector, root) => (root || document).querySelector(selector);
   const $$ = (selector, root) => Array.from((root || document).querySelectorAll(selector));
 
-  // Schutz vor XSS: alle Texte aus dem Backend vor innerHTML escapen
+  
   function esc(value) {
     return String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -22,31 +22,31 @@
     return new URLSearchParams(window.location.search).get(name);
   }
 
-  /* ---------- Beschriftungen ---------- */
+  
   const PRIO = { HIGH: 'Hoch', MEDIUM: 'Mittel', LOW: 'Niedrig', HOCH: 'Hoch', MITTEL: 'Mittel', NIEDRIG: 'Niedrig' };
   const ROLE = { PROJECT_LEADER: 'Projektleitung', PROJEKTLEITUNG: 'Projektleitung', MEMBER: 'Teammitglied', TEAMMITGLIED: 'Teammitglied', PL: 'Projektleitung', member: 'Teammitglied' };
   const TYPE = { MEETING: 'Meeting', LANGES_TODO: 'Langes To-Do' };
   const STATUS = { ACTIVE: 'Aktiv', AKTIV: 'Aktiv', COMPLETED: 'Abgeschlossen', ABGESCHLOSSEN: 'Abgeschlossen' };
 
-  /* ---------- Datum (Format 'YYYY-MM-DDTHH:mm') ---------- */
+  
   function parts(iso) {
     const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(iso || '');
     return m ? { y: m[1], mo: m[2], d: m[3], h: m[4], mi: m[5] } : null;
   }
-  // 15.10. 13:00
+
   function fmtShort(iso) { const p = parts(iso); return p ? `${p.d}.${p.mo}. ${p.h}:${p.mi}` : '–'; }
-  // 05.10.
+
   function fmtDayMonth(iso) { const p = parts(iso); return p ? `${p.d}.${p.mo}.` : ''; }
-  // 14.10.2026
+
   function fmtDate(iso) { const p = parts(iso); return p ? `${p.d}.${p.mo}.${p.y}` : ''; }
-  // 21.10.2026, 09:00
+
   function fmtLong(iso) { const p = parts(iso); return p ? `${p.d}.${p.mo}.${p.y}, ${p.h}:${p.mi}` : '–'; }
-  // 16.10.2026 09:00 (Eingabefeld)
+
   function fmtInput(iso) { const p = parts(iso); return p && p.h ? `${p.d}.${p.mo}.${p.y} ${p.h}:${p.mi}` : ''; }
-  // HH:mm
+
   function fmtTime(iso) { const p = parts(iso); return p ? `${p.h}:${p.mi}` : ''; }
 
-  // "16.10.2026 09:00" oder native datetime-local-Werte -> "2026-10-16T09:00".
+
   function parseInput(text) {
     const value = String(text || '').trim();
     if (!value) return '';
@@ -68,14 +68,14 @@
     return `${y}-${pad(mo)}-${pad(d)}T${pad(h)}:${pad(mi)}`;
   }
 
-  /* ---------- Icons ---------- */
+  
   const ICON = {
     pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>',
     trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/></svg>',
     plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>'
   };
 
-  /* ---------- Modals ---------- */
+  
   let zIndex = 50;
   const openStack = [];
 
@@ -104,7 +104,7 @@
     backdrop.dispatchEvent(new CustomEvent('modal:closed'));
   }
 
-  // Schliessen per X/Abbrechen (data-close), Klick auf Hintergrund und ESC
+
   document.addEventListener('click', event => {
     const closer = event.target.closest('[data-close]');
     if (closer) {
@@ -118,7 +118,7 @@
     if (event.key === 'Escape' && openStack.length) closeModal(openStack[openStack.length - 1]);
   });
 
-  /* ---------- Formular-Fehler ---------- */
+  
   function showFormError(form, message) {
     let box = form.querySelector('.form-error');
     if (!box) {
@@ -133,7 +133,7 @@
   }
   function clearFormError(form) { showFormError(form, ''); }
 
-  // Button waehrend eines Requests sperren
+
   async function withBusy(button, task) {
     if (!button) return task();
     const label = button.innerHTML;
@@ -141,7 +141,7 @@
     try { return await task(); } finally { button.disabled = false; button.innerHTML = label; }
   }
 
-  /* ---------- Toast ---------- */
+  
   let toastTimer = null;
   function toast(message, isError) {
     let el = $('#toast');
@@ -160,13 +160,13 @@
     toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
   }
 
-  /* ---------- Kopfzeile (Name, Einladungs-Badge, Abmelden) ---------- */
+  
   async function initTopbar(api) {
     const logoutButton = $('#logoutButton');
     if (logoutButton) {
       logoutButton.addEventListener('click', async () => {
         if (!window.confirm('Möchtest du dich wirklich abmelden?')) return;
-        try { await api.logout(); } catch (e) { /* trotzdem zur Login-Seite */ }
+        try { await api.logout(); } catch (e) {  }
         window.location.href = '../../Login/HTML/login.html';
       });
     }
@@ -182,7 +182,7 @@
     }
   }
 
-  /* ---------- Teilnehmer-Auswahl mit Chips (Wireframe "Mia M. x  + hinzufuegen") ---------- */
+  
   function participantPicker(container, options) {
     const members = options.members || [];
     let all = !!options.allParticipants;
@@ -231,7 +231,7 @@
     };
   }
 
-  /* ---------- Teilaufgaben-Editor (Wireframe "Task bearbeiten") ---------- */
+  
   function subtaskEditor(container, options) {
     let items = (options.subtasks || []).map(s => Object.assign({}, s));
 
@@ -286,7 +286,7 @@
     };
   }
 
-  /* ---------- Fortschritt ---------- */
+  
   function progressOf(task) {
     const total = task.subtasks ? task.subtasks.length : 0;
     const done = total ? task.subtasks.filter(s => s.done).length : 0;

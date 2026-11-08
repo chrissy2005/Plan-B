@@ -25,7 +25,7 @@
   $('#newProjectButton').addEventListener('click', openNewProjectModal);
 
   // KI-Log Nr. 50: Der frühere create-new-project.html-Einstieg verwendet
-  // dasselbe zentrale Formular und erzeugt keine zweite Projektanlage.
+  
   if (window.location.hash === '#new') {
     openNewProjectModal();
     window.history.replaceState(null, '', window.location.pathname + window.location.search);
@@ -33,12 +33,12 @@
 
   async function loadProjects() {
     try {
-      // BACKEND: GET /projects
+      
       const projects = await api.getProjects();
       renderProjects(projects);
     } catch (error) {
       // KI-Log Nr. 57: GET /projects ist im aktuellen Backend noch nicht vorhanden.
-      // Diese Meldung trennt fehlende GET-Unterstützung von einem echten Rollenfehler.
+      
       const message = error.status === 403 || error.status === 404
         ? 'Die Projektübersicht kann noch nicht geladen werden, weil GET /projects im Backend noch fehlt.'
         : error.message;
@@ -100,8 +100,8 @@
     await ui.withBusy($('#createProjectSubmit'), async () => {
       try {
         // KI-Log Nr. 57: Nach dem POST die Projektansicht öffnen.
-        // project.js sendet dort getrennte GETs für Meetings und Long-To-Dos.
-        // BACKEND: POST /projects -> { id|projectId, message }
+        
+        
         const created = await api.createProject({ title, description });
         window.location.href = 'project.html?id=' + encodeURIComponent(created.id);
       } catch (error) {

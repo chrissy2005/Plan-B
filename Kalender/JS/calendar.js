@@ -25,8 +25,8 @@
 
     let currentMonday = getMonday(new Date());
 
-    // Vorübergehende Beispieldaten, keine Daten aus dem Backend.
-    // Die Termine gehören zur aktuellen Woche beim Öffnen der Seite.
+    
+    
     const demoMonday = getMonday(new Date());
 
     function demoDate(dayOffset, hour, minute = 0) {
@@ -106,8 +106,8 @@
         }
     ];
 
-    // Daten, mit denen die Kalenderansicht arbeitet.
-    // Im Echtbetrieb werden diese Listen durch API-Antworten gefüllt.
+    
+    
     let calendarEvents = isDemoMode ? demoEvents : [];
     let externalCalendarEvents = [];
     let calendarLongTodos = isDemoMode ? demoLongTodos : [];
@@ -124,13 +124,13 @@
         minute: "2-digit"
     });
 
-    // Wandelt einen Datumswert aus der API in ein Date-Objekt um.
+    
     function parseCalendarDate(value, fieldName) {
         if (typeof value !== "string" || !value.trim()) {
             throw new Error(`In den Kalenderdaten fehlt ${fieldName}.`);
         }
 
-        // Reine Datumsangaben ausdrücklich als lokales Datum behandeln.
+        
         const normalizedValue = /^\d{4}-\d{2}-\d{2}$/.test(value)
             ? `${value}T00:00:00`
             : value;
@@ -146,8 +146,8 @@
         return date;
     }
 
-    // Übersetzt eine eigene Teilaufgabe aus der API ins Kalenderformat.
-    // Wird für geplante und ungeplante Teilaufgaben verwendet.
+    
+    
     function mapCalendarSubtask(raw, longTodoById = new Map()) {
         const subtaskId = raw.subtaskId ?? raw.id;
         const longToDoId = raw.longToDoId ?? raw.longTodoId;
@@ -308,7 +308,7 @@
 
         setCalendarLoading(true);
 
-        // Alte Termine entfernen, damit sie nicht unter einer neuen Woche stehen.
+        
         calendarEvents = [];
         calendarLongTodos = [];
         calendarSubtasks = [];
@@ -325,15 +325,15 @@
 
         try {
             // KI-Log Nr. 69: /calendar bleibt die Quelle für die
-            // Kalenderwoche. Nur die rechte Box lädt unabhängig davon
-            // ungeplante Teilaufgaben über /me/subtasks.
+            
+            
             const results = await Promise.allSettled([
                 window.PlanBApi.getCalendarWeek(requestedWeek),
                 window.PlanBApi.getMySubtasks(),
                 window.PlanBApi.getMyLongTodos()
             ]);
 
-            // Eine inzwischen gestartete neuere Anfrage hat Vorrang.
+            
             if (loadVersion !== calendarLoadVersion) {
                 return;
             }
@@ -394,7 +394,7 @@
             unscheduledSubtasks = [];
             renderWeek();
 
-            // Einen Ladefehler nicht als leere Aufgabenliste darstellen.
+            
             document.getElementById("longTodoBars").textContent =
                 "Lange To-Dos konnten nicht geladen werden.";
 
@@ -479,8 +479,8 @@
             const message = document.getElementById("calendarMessage");
             message.hidden = false;
 
-            // Eine erfolgreiche Speicherung bleibt auch dann erkennbar,
-            // wenn das anschließende Neuladen fehlschlägt.
+            
+            
             message.textContent =
                 successMessage + " " + message.textContent;
         }
@@ -514,7 +514,7 @@
         });
     }
 
-    // Ermittelt den Montag der übergebenen Woche.
+    
     function getMonday(date) {
         const monday = new Date(date);
         monday.setHours(0, 0, 0, 0);
@@ -525,7 +525,7 @@
         return monday;
     }
 
-    // Rechnet mit Kalendertagen, auch über Zeitumstellungen hinweg.
+    
     function addDays(date, amount) {
         const result = new Date(date);
         result.setDate(result.getDate() + amount);
@@ -561,7 +561,7 @@
         dayHeaders.replaceChildren();
         calendarDays.replaceChildren();
 
-        // Freies Feld über der linken Uhrzeitenspalte.
+        
         const corner = document.createElement("div");
         corner.setAttribute("aria-hidden", "true");
         dayHeaders.append(corner);
@@ -601,7 +601,7 @@
     }
 
     function renderEvents(events) {
-    // Alte Ereignisse entfernen, damit keine Duplikate entstehen.
+    
     calendarDays.querySelectorAll(".calendar-event").forEach(
         element => element.remove()
     );
@@ -619,7 +619,7 @@
         const dayEnd = addDays(dayStart, 1);
         const segments = [];
 
-        // Sichtbare Abschnitte für diesen Tag sammeln.
+        
         for (const event of events) {
             const start = event.start;
             const end = event.end;
@@ -653,7 +653,7 @@
             });
         }
 
-        // Frühe Termine zuerst, bei gleichem Beginn längere zuerst.
+        
         segments.sort((a, b) =>
             a.startMinutes - b.startMinutes
             || b.endMinutes - a.endMinutes
@@ -662,8 +662,8 @@
         const groups = [];
         let group = null;
 
-        // Zusammenhängende Überschneidungen gruppieren
-        // und jeweils eine freie Spalte zuweisen.
+        
+        
         for (const segment of segments) {
             if (!group || segment.startMinutes >= group.endMinutes) {
                 group = {
@@ -693,7 +693,7 @@
             group.segments.push(segment);
         }
 
-        // Termine mit der berechneten Position und Breite zeichnen.
+        
         for (const currentGroup of groups) {
             const columnCount = currentGroup.columnEnds.length;
             const widthPercent = 100 / columnCount;
@@ -728,7 +728,7 @@
                 element.style.width =
                     `calc(${widthPercent}% - 8px)`;
 
-                // Die bisherige rechte Positionierung aufheben.
+                
                 element.style.right = "auto";
 
                 const title = document.createElement("strong");
@@ -777,7 +777,7 @@ function renderLongTodos(longTodos) {
             continue;
         }
 
-        // Für die Balken vergleichen wir Kalendertage.
+        
         const firstDay = new Date(todo.start);
         firstDay.setHours(0, 0, 0, 0);
 
@@ -794,7 +794,7 @@ function renderLongTodos(longTodos) {
             }
         }
 
-        // Dieses To-Do liegt außerhalb der angezeigten Woche.
+        
         if (visibleDays.length === 0) {
             continue;
         }
@@ -1047,8 +1047,8 @@ function renderLongTodos(longTodos) {
         if (isDemoMode) {
             events = [...calendarEvents, ...calendarSubtasks];
         } else {
-            // Die Woche des gewählten Zeitfensters prüfen.
-            // Sie kann von der gerade angezeigten Woche abweichen.
+            
+            
             const week = localDateValue(getMonday(start));
             const data = await window.PlanBApi.getCalendarWeek(week);
             const mapped = mapCalendarWeek(data);
@@ -1057,8 +1057,8 @@ function renderLongTodos(longTodos) {
         }
 
         return events.filter(item => {
-            // API-Antworten enthalten neue Objekte.
-            // Deshalb zusätzlich anhand der Teilaufgaben-ID vergleichen.
+            
+            
             if (
                 item === currentSubtask
                 || (
@@ -1152,8 +1152,8 @@ function renderLongTodos(longTodos) {
                 const conflicts = await findScheduleConflicts(start, end, task);
 
                 if (conflicts.length > 0) {
-                    // Eine Bestätigung gilt nur für genau dieses Zeitfenster
-                    // und die zuletzt angezeigten Konflikte.
+                    
+                    
                     const conflictKey = JSON.stringify([
                         task.id,
                         start.toISOString(),
@@ -1215,7 +1215,7 @@ function renderLongTodos(longTodos) {
             }
         });
 
-        // Erst nach Freigabe der Eingaben den Fokus setzen.
+        
         if (
             document.getElementById("calendarScheduleDialog").open
             && !conflictBox.hidden
@@ -1281,8 +1281,8 @@ function renderLongTodos(longTodos) {
             .addEventListener("input", resetScheduleConflict);
     });
 
-    // Während einer laufenden Anfrage bleiben die Dialoge geöffnet.
-    // Nach Abschluss funktioniert Escape wieder wie gewohnt.
+    
+    
     ["calendarScheduleDialog", "calendarDetails"].forEach(id => {
         document.getElementById(id).addEventListener("cancel", event => {
             if (isSavingSchedule) {

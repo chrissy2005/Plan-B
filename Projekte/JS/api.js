@@ -24,20 +24,20 @@
   'use strict';
 
   // KI-Log Nr. 41: API-URL wie im vorhandenen Mia-Projekt als Konfiguration.
-  // BACKEND: Diese Basis-URL auf den erreichbaren Server setzen.
+  
   const API_BASE = 'https://plan-b-api-6486e78ed17c.herokuapp.com'; // KI-Log Nr. 47
 
   // KI-Log Nr. 43: Echte Requests an den Backend-Port verwenden.
   const USE_MOCK = false;
 
   // KI-Log Nr. 44: Nur für die lokale Entwicklung ohne Login.
-  // Vor dem echten Betrieb unbedingt auf false setzen.
+  
   const DEV_BYPASS_AUTH = false;
 
   // KI-Log Nr. 42: Login und API verwenden sessionStorage mit demselben Schlüssel.
   const TOKEN_KEY = 'token';
 
-  // Login-Datei liegt im Projekt-Root, zwei Ebenen über Projekte/HTML.
+  
   const LOGIN_PAGE = '../../Login/HTML/login.html';
 
   const toApiPriority = value => ({
@@ -109,14 +109,9 @@
     409: 'Konflikt: Die Daten wurden inzwischen geändert.'
   };
 
-  /* ------------------------------------------------------------------
-     Zentrale fetch-Funktion fuer das echte Backend
-     - haengt den Token als Bearer-Header an
-     - 401 -> zurueck zur Login-Seite
-     - Fehler werden als ApiError(status, message) geworfen
-     ------------------------------------------------------------------ */
+  
   // KI-Log Nr. 46: Der Token wird bei geschützten Requests ausschließlich
-  // im Authorization-Header übertragen; der JSON-Body enthält nur Fachdaten.
+  
   function readToken() {
     if (DEV_BYPASS_AUTH && USE_MOCK) return 'development-token';
     try { return window.sessionStorage.getItem(TOKEN_KEY); }
@@ -125,7 +120,7 @@
 
   function goToLogin() {
     if (DEV_BYPASS_AUTH && USE_MOCK) return;
-    try { window.sessionStorage.removeItem(TOKEN_KEY); } catch (error) { /* Storage kann gesperrt sein */ }
+    try { window.sessionStorage.removeItem(TOKEN_KEY); } catch (error) {  }
     window.location.href = LOGIN_PAGE;
   }
 
@@ -186,7 +181,7 @@
   }
 
   // KI-Log Nr. 41: Fallback-Identitaet aus Standard-JWT-Claims fuer den UI-Namen.
-  // Die Berechtigung wird NIE clientseitig aus dem JWT abgeleitet; das Backend prueft jeden Request.
+  
   function tokenClaims() {
     try {
       const token = readToken();
@@ -316,9 +311,7 @@
     });
   }
 
-  /* ==================================================================
-     OEFFENTLICHE API - diese Funktionen nutzen die Seiten
-     ================================================================== */
+  
   async function requestProjectListWithOfflineFallback({storeName, projectId, path, extractList, normalizeItem}) {
     const offlineDb = window.offlineDb;
     if(!offlineDb){
@@ -371,9 +364,9 @@
   const api = {
     ApiError,
 
-    /* ---------- Kalender ---------- */
+    
 
-    // Bestehender Backend-Endpunkt: Kalenderwoche laden.
+    
     async getCalendarWeek(week) {
       const params = new URLSearchParams({ week });
       const data = await request('GET', '/calendar?' + params.toString());
@@ -390,9 +383,9 @@
       return data;
     },
 
-    // Neue Schnittstelle für Johannes:
-    // Eigene offene Teilaufgaben ohne Zeitfenster, unabhängig von der Woche.
-    // Antwort: { subtasks: [...] }
+    
+    
+    
     async getCalendarUnscheduledSubtasks() {
       const data = await request('GET', '/calendar/unscheduled-subtasks');
 
@@ -405,9 +398,9 @@
       return data.subtasks;
     },
 
-    // Neue Schnittstelle für Johannes:
-    // from/to: ISO-Zeitstempel mit Zeitzonenoffset.
-    // Beide null: Zeitplanung aufheben, Zuweisung beibehalten.
+    
+    
+    
     async updateSubtaskSchedule(longToDoId, subtaskId, slot) {
       const path =
         '/long-todos/' + encodeURIComponent(longToDoId)
@@ -420,7 +413,7 @@
       });
     },
 
-    /*---------------Filterung im Dashboard----------*/
+    
     async getMyDashboardTasks(filters = {}) {
       const [
         meetings,
@@ -535,9 +528,9 @@ async getMySubtasks(filters = {}) {
 
 
 
-    /* ---------- Benutzer / Sitzung ---------- */
+    
 
-    // BACKEND: GET /users/me -> { id, name, email }
+    
     async getCurrentUser() {
       if (USE_MOCK) return mock.getCurrentUser();
       const claims = tokenClaims();
@@ -552,7 +545,7 @@ async getMySubtasks(filters = {}) {
         };
         return cachedUser;
       } catch (error) {
-        // BACKEND: Wenn kein GET /users/me existiert, muss das Login-JWT mindestens sub/userId enthalten.
+        
         if (error.status === 404 && (claims.sub || claims.userId || claims.email)) {
           cachedUser = {
             id: String(claims.sub || claims.userId || claims.email),
@@ -565,7 +558,7 @@ async getMySubtasks(filters = {}) {
       }
     },
 
-    // BACKEND: DELETE /auth (Abmelden, siehe API-Design) -> 204
+    
     async logout() {
       try {
         await request('DELETE', '/auth');
@@ -586,12 +579,12 @@ async getMySubtasks(filters = {}) {
       }
     },
 
-    // Kein Invitation-Backend: direkte Mitgliedschaft, kein Badge-Request.
+    
     async getOpenInvitationCount() {
       return 0;
     },
 
-    // Kompatibilität mit der alten Einladungsansicht, ohne Backend-Aufruf.
+    
     async getInvitationOverview() {
       return { received: [], sent: [] };
     },
@@ -604,20 +597,13 @@ async getMySubtasks(filters = {}) {
       return Promise.reject(new ApiError(400, 'Es gibt keine ausstehenden Einladungen.'));
     },
 
-    /* ---------- Projekte ---------- */
+    
 
-    // BACKEND: GET /projects
-    // -> [{ id, title, status, myRole, memberCount, updatedAt:'YYYY-MM-DD' }]
-    /* old getProjects-Method without offline fallback
-    async getProjects() {
-      if (USE_MOCK) return mock.getProjects();
-      const raw = await request('GET', '/projects');
-      const data = raw && (raw.data || raw);
-      const list = Array.isArray(data) ? data : (data.projects || data.items || []);
-      return list.map(normalizeProject);
-    },*/
+    
+    
+    
 
-    //new getProjects-Method with offline-fallback
+    
     async getProjects() {
       if (USE_MOCK) return mock.getProjects();
       console.info("Wir sind in der getProjects Methode");
@@ -673,9 +659,9 @@ async getMySubtasks(filters = {}) {
     },
 
     // KI-Log Nr. 55: Das Backend validiert je nach Version "title" oder "name".
-    // Beide Felder enthalten denselben UI-Wert; Token/Header bleiben zentral.
-    // BACKEND: POST /projects  Body { title, name, description } -> 201 { id|projectId }
-    // Ersteller wird im Backend automatisch PROJEKTLEITUNG.
+    
+    
+    
     async createProject(data) {
       if (USE_MOCK) return mock.createProject(data);
       const title = String(data.title ?? data.name ?? '').trim();
@@ -689,22 +675,17 @@ async getMySubtasks(filters = {}) {
       return { ...result, id: String(id) };
     },
 
-    // BACKEND: DELETE /projects/{projectId} -> 200
+    
     deleteProject(projectId) {
       if (USE_MOCK) return mock.deleteProject(projectId);
       return request('DELETE', '/projects/' + encodeURIComponent(projectId));
     },
 
-    // BACKEND: GET /projects/{projectId}
-    // -> { projectId, name, description, status, role, createdByUserFirstName, createdByUserLastName }
-    /* old getProject-Method without offline-fallback
-    async getProject(projectId) {
-      if (USE_MOCK) return mock.getProject(projectId);
-      const raw = await request('GET', '/projects/' + encodeURIComponent(projectId));
-      return normalizeProject(raw);
-    },*/
+    
+    
+    
 
-    //new getProject-Method with offline-fallback
+    
     async getProject(projectId) {
       if (USE_MOCK) {
         return mock.getProject(projectId);
@@ -740,7 +721,7 @@ async getMySubtasks(filters = {}) {
     },
 
     // KI-Log Nr. 66: GET liefert die Members-Antwort und protokolliert nur JSON-Fachdaten.
-    // BACKEND: GET /projects/{projectId}/members -> { message, data: [{ userId, firstName, lastName, role, email }] }
+    
     /*async getMembers(projectId) {
       if (USE_MOCK) return mock.getProject(projectId).then(project => project.members || []);
       const encodedProjectId = encodeURIComponent(projectId);
@@ -765,7 +746,7 @@ async getMySubtasks(filters = {}) {
     },
     */
 
-    //neue GET (projects/{projectId}/members) mit offline fallback
+    
     async getMembers(projectId) {
       if (USE_MOCK) return mock.getProject(projectId).then(project => project.members || []);
       const encodedProjectId = encodeURIComponent(projectId);
@@ -816,7 +797,7 @@ async getMySubtasks(filters = {}) {
 
 
 
-    // BACKEND: PUT /projects/{projectId}  Body { title, description, status } -> 200 Projekt
+    
     async updateProject(projectId, data) {
       if (USE_MOCK) return mock.updateProject(projectId, data);
       const payload = { 
@@ -827,25 +808,25 @@ async getMySubtasks(filters = {}) {
       return normalizeProject(raw);
     },
 
-    /* ---------- Mitglieder ---------- */
+    
 
     // KI-Log Nr. 67: Die Rollenänderung nutzt den vertraglich definierten PUT-Endpunkt.
-    // BACKEND: PUT /projects/{projectId}/members/{userId}  Body { role } -> 200
-    // 409, wenn dadurch keine Projektleitung mehr uebrig waere
+    
+    
     updateMemberRole(projectId, userId, role) {
       if (USE_MOCK) return mock.updateMemberRole(projectId, userId, role);
       const apiRole = toApiRole(role);
       return request('PUT', '/projects/' + encodeURIComponent(projectId) + '/members/' + encodeURIComponent(userId), { role: apiRole });
     },
 
-    // BACKEND: DELETE /projects/{projectId}/members/{userId} -> 204
+    
     removeMember(projectId, userId) {
       if (USE_MOCK) return mock.removeMember(projectId, userId);
       return request('DELETE', '/projects/' + encodeURIComponent(projectId) + '/members/' + encodeURIComponent(userId));
     },
 
     // KI-Log Nr. 68: POST protokolliert Request- und Response-JSON für die Rollenfehleranalyse.
-    // BACKEND: POST /projects/{projectId}/members -> { message: "member added" }
+    
     async addMember(projectId, data) {
       const payload = {
         email: String(data.email || '').trim().toLowerCase(),
@@ -858,29 +839,12 @@ async getMySubtasks(filters = {}) {
       return raw;
     },
 
-    /* ---------- Tasks (Meeting / Langes To-Do) ---------- */
+    
 
-    // BACKEND: GET /projects/{projectId}/meetings and /projects/{projectId}/long-todos
-    // The UI still receives one normalized task list internally.
-    //old Method without Offline-Fallback
-    /*
-    async getTasks(projectId, filters) {
-      if (USE_MOCK) return mock.getTasks(projectId);
-      const encodedId = encodeURIComponent(projectId);
-      const [meetingsRaw, todosRaw] = await Promise.all([
-        request('GET', '/projects/' + encodedId + '/meetings'),
-        api.getLongTodos(projectId, filters)
-      ]);
-      const unwrapList = (raw, key) => {
-        const data = raw && (raw.data || raw);
-        if (Array.isArray(data)) return data;
-        return Array.isArray(data && data[key]) ? data[key] : (data && data.items) || [];
-      };
-      const meetings = unwrapList(meetingsRaw, 'meetings').map(normalizeMeeting);
-      const todos = (Array.isArray(todosRaw) ? todosRaw : unwrapList(todosRaw, 'longTodos'))
-        .map(normalizeLongTodo);
-      return meetings.concat(todos);
-    },*/
+    
+    
+    
+    
 
     async getTasks(projectId, filters){
       if (USE_MOCK) return mock.getTasks(projectId);
@@ -894,7 +858,7 @@ async getMySubtasks(filters = {}) {
       return meetings.concat(longTodos);
     },
 
-    // GET /projects/{projectId}/meetings with offline Fallback
+    
     async getMeetings(projectId){
       if (USE_MOCK) {
         return mock.getTasks(projectId).then(tasks => tasks.filter(task => task.type === 'MEETING').map(normalizeMeeting));
@@ -943,7 +907,7 @@ async getMySubtasks(filters = {}) {
       return list.map(normalizeLongTodo);
     },*/
 
-    //new GET /projects/{projectId}/long-todos with offline Fallback
+    
     async getLongTodos(projectId, filters){
       if (USE_MOCK) {
         return mock.getTasks(projectId).then(tasks => tasks.filter(task => task.type === 'LANGES_TODO').map(normalizeLongTodo));
@@ -1015,7 +979,7 @@ async getMySubtasks(filters = {}) {
     },
 
     // KI-Log Nr. 43: Meeting und langes To-do verwenden getrennte JSON-Payloads.
-    // BACKEND: POST /projects/{projectId}/meetings oder /long-todos
+    
     async createTask(projectId, data) {
       return data.type === 'MEETING' ? api.createMeeting(projectId, data) : api.createLongTodo(projectId, data);
     },
@@ -1055,21 +1019,9 @@ async getMySubtasks(filters = {}) {
       return request('POST', '/projects/' + encodeURIComponent(projectId) + '/long-todos', payload);
     },
 
-    /* old updateTask-method, that updates every field step by step
-    // BACKEND: PUT /tasks/{taskId}  Body = kompletter Task inkl. subtasks -> 200 Task
-    // Neue Teilaufgaben haben id = null, das Backend vergibt die IDs.
-    async updateTask(taskId, data, type) {
-      if (USE_MOCK) return mock.updateTask(taskId, data);
-      const base = type === 'MEETING' ? '/meetings/' : '/long-todos/';
-      const updates = [['title', data.title], ['description', data.description], ['startDateTime', data.start], ['endDateTime', data.end]];
-      if (type !== 'MEETING') updates.push(['priority', toApiPriority(data.priority)]);
-      for (const [attribute, newValue] of updates) {
-        await request('PUT', base + encodeURIComponent(taskId), { update: { attribute, newValue } });
-      }
-    },
-    */
+    
 
-    //new updateTask-method which sends one JSON
+    
     async updateTask(taskId, data, type){
       if(type === 'MEETING'){
         return api.updateMeeting(taskId, data);
@@ -1080,7 +1032,7 @@ async getMySubtasks(filters = {}) {
       throw new Error('Unbekannter Task-Typ');
     },
 
-    //updateMeeting-Method to PUT /meetings/{meetingId}
+    
     async updateMeeting(meetingId, data){
       if(USE_MOCK){
         return mock.updateTask(meetingId, data);
@@ -1096,7 +1048,7 @@ async getMySubtasks(filters = {}) {
       return request('PUT', '/meetings/'+ encodeURIComponent(meetingId), payload);
     },
 
-    //updateLongToDo-Method to PUT/long-todos/{longToDoId}
+    
     async updateLongToDo(longToDoId, data){
       if(USE_MOCK){
         return mock.updateTask(longToDoId, data);
@@ -1119,14 +1071,14 @@ async getMySubtasks(filters = {}) {
       return request('PUT', '/long-todos/' + encodeURIComponent(longToDoId), payload);
     },
 
-    // BACKEND: DELETE /tasks/{taskId} -> 204
+    
     deleteTask(taskId, type) {
       if (USE_MOCK) return mock.deleteTask(taskId);
       const base = type === 'MEETING' ? '/meetings/' : '/long-todos/';
       return request('DELETE', base + encodeURIComponent(taskId));
     },
 
-    // BACKEND: PATCH /tasks/{taskId}  Body { done } -> 200 Task  (nur Meetings, nur Teilnehmer)
+    
     async setTaskDone(taskId, done, type) {
       if (USE_MOCK) return mock.setTaskDone(taskId, done);
       const apiDone = toBoolean(done);
@@ -1135,11 +1087,11 @@ async getMySubtasks(filters = {}) {
       return request('PUT', '/meetings/' + encodeURIComponent(taskId) + '/done', { update: { attribute: 'done', newValue: apiDone } });
     },
 
-    /* ---------- Teilaufgaben ---------- */
+    
 
     // KI-Log Nr. 44 | BACKEND: PUT /long-todos/{longToDoId}/subtasks/{subtaskId}/assignment
-    // Der Assignment-Endpunkt bleibt für das Freigeben erhalten, weil das
-    // aktuelle Backend dafür from/to voraussetzt.
+    
+    
     assignSubtask(taskId, subtaskId, data) {
       if (USE_MOCK) {
         if (data.assigned == null) return mock.releaseSubtask(taskId, subtaskId);
@@ -1162,7 +1114,7 @@ async getMySubtasks(filters = {}) {
     },
 
     // KI-Log Nr. 62 | BACKEND: PUT /long-todos/{longToDoId}/subtasks/{subtaskId}/claim
-    // Claim setzt ausschließlich die assigneeId; die Zeitplanung erfolgt separat.
+    
     claimSubtask(taskId, subtaskId) {
       if (USE_MOCK) return mock.claimSubtask(taskId, subtaskId);
       return request(
@@ -1174,8 +1126,8 @@ async getMySubtasks(filters = {}) {
       );
     },
 
-    // BACKEND: PATCH /tasks/{taskId}/subtasks/{subtaskId}  Body { done } -> 200 Task
-    // Backend setzt das lange To-Do automatisch auf erledigt, wenn alle Teilaufgaben erledigt sind.
+    
+    
     async setSubtaskDone(taskId, subtaskId, done) {
       if (USE_MOCK) return mock.setSubtaskDone(taskId, subtaskId, done);
       const path = '/long-todos/' + encodeURIComponent(taskId) + '/subtasks/' + encodeURIComponent(subtaskId);
@@ -1194,7 +1146,7 @@ async getMySubtasks(filters = {}) {
     },
 
     // KI-Log Nr. 62 | BACKEND: PUT /long-todos/{longToDoId}/subtasks/{subtaskId}/schedule
-    // Das Projektformular liefert date/from/to; das Backend erwartet ISO-Zeitstempel.
+    
     scheduleSubtask(taskId, subtaskId, slot) {
       if (USE_MOCK) return mock.scheduleSubtask(taskId, subtaskId, slot);
       const start = new Date(slot.date + 'T' + slot.from + ':00');
@@ -1220,10 +1172,10 @@ async getMySubtasks(filters = {}) {
       return request('GET', '/availability/free-slots?userId=' + encodeURIComponent(userId) + '&until=' + encodeURIComponent(until));
     },
 
-    /* ---------- Verfuegbarkeit (Kalender) ---------- */
+    
 
-    // BACKEND: POST /availability  Body { userIds, start, end }
-    // -> [{ available, unavailableMembers[] }]  (Daten aus dem Backend)
+    
+    
     async checkAvailability(projectId, data) {
       const payload = {
         userIds: (data.userIds || []).map(id => Number(id)).filter(id => Number.isFinite(id)),
@@ -1246,17 +1198,13 @@ async getMySubtasks(filters = {}) {
       };
     },
 
-    // Nur fuer Tests: Testdaten zuruecksetzen
+    
     resetMockData() {
       sessionStorage.removeItem(MOCK_KEY);
     }
   };
 
-  /* ==================================================================
-     MOCK - Testdaten aus den Wireframes
-     BACKEND: Dieser ganze Block wird nicht mehr benutzt, sobald USE_MOCK = false ist.
-     Die Regeln hier (Berechtigungen, 409-Faelle) zeigen, was das Backend pruefen sollte.
-     ================================================================== */
+  
   const MOCK_KEY = 'planb-mock-projects-v2';
   const MOCK_DELAY_MS = 120;
 
@@ -1321,7 +1269,7 @@ async getMySubtasks(filters = {}) {
         { id: '5', title: 'Projekt 5 – Semesterplanung', status: 'AKTIV', updatedAt: '2026-10-13', description: 'Semesterplanung.', members: [{ userId: 'u3', role: 'PROJEKTLEITUNG' }], invitations: [] }
       ],
       tasks: [
-        // ----- Projekt 1 -----
+        
         { id: 't1', projectId: '1', type: 'MEETING', title: 'Sprint Review', description: 'Ergebnisse des Sprints vorstellen.',
           start: '2026-10-15T13:00', end: '2026-10-15T15:00', priority: 'HOCH', allParticipants: false, participantIds: ['u1', 'u2'],
           done: false, doneBy: null, doneAt: null, subtasks: [] },
@@ -1356,7 +1304,7 @@ async getMySubtasks(filters = {}) {
           start: '2026-10-05T09:00', end: '2026-10-05T12:00', priority: 'HOCH', allParticipants: false, participantIds: ['u1'],
           done: true, doneBy: 'u1', doneAt: '2026-10-05', subtasks: [] },
 
-        // ----- Projekt 2 -----
+        
         { id: 't10', projectId: '2', type: 'LANGES_TODO', title: 'API-Endpunkte Tasks', description: 'REST-Endpunkte für Tasks und Teilaufgaben umsetzen.',
           start: '2026-10-19T09:00', end: '2026-10-21T17:00', priority: 'MITTEL', allParticipants: false, participantIds: ['u1', 'u2'],
           done: false, doneBy: null, doneAt: null,
@@ -1390,7 +1338,7 @@ async getMySubtasks(filters = {}) {
     function load() {
       const raw = sessionStorage.getItem(MOCK_KEY);
       if (raw) {
-        try { return JSON.parse(raw); } catch (e) { /* neu anlegen */ }
+        try { return JSON.parse(raw); } catch (e) {  }
       }
       const db = seed();
       save(db);
@@ -1700,7 +1648,7 @@ async getMySubtasks(filters = {}) {
         if (!s) return fail(404);
         if (!isParticipant(db, task)) return fail(403, 'Nur Teilnehmer können Teilaufgaben übernehmen.');
 
-        // Demo fuer den Konflikt-Screen: project.html?id=2&konflikt=1
+        
         if (new URLSearchParams(window.location.search).get('konflikt') === '1' && !s.assigneeId) {
           s.assigneeId = 'u2';
           save(db);
