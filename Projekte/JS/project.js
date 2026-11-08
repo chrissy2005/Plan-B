@@ -430,15 +430,10 @@
 
   async function claimSubtask(button) {
     const { task: taskId, sub: subId } = button.dataset;
-    const task = findTask(taskId);
     await ui.withBusy(button, async () => {
       try {
-        // KI-Log Nr. 44 | BACKEND: PUT .../assignment { from, to, assigned }
-        await api.assignSubtask(taskId, subId, {
-          from: task && task.start || '',
-          to: task && task.end || '',
-          assigned: state.me.id
-        });
+        // KI-Log Nr. 62 | BACKEND: PUT .../claim
+        await api.claimSubtask(taskId, subId);
         ui.toast('Teilaufgabe übernommen.');
         await refresh();
         if (!$('#subtaskModal').hidden) renderSubtask(taskId, subId);
@@ -460,11 +455,10 @@
     const task = findTask(taskId);
     await ui.withBusy(button, async () => {
       try {
-        // KI-Log Nr. 44 | BACKEND: PUT .../assignment { from, to, assigned: null }
-        await api.assignSubtask(taskId, subId, {
+        // KI-Log Nr. 62 | BACKEND: PUT .../assignment { from, to, assigned: null }
+        await api.releaseSubtask(taskId, subId, {
           from: task && task.start || '',
           to: task && task.end || '',
-          assigned: null
         });
         ui.toast('Teilaufgabe wieder freigegeben.');
         await refresh();
@@ -807,7 +801,7 @@
     if (task && task.end && slot.date > task.end.slice(0, 10)) { ui.showFormError(form, 'Das Zeitfenster muss bis zur Frist liegen.'); return; }
     await ui.withBusy($('#scheduleSubmit'), async () => {
       try {
-        // BACKEND: POST /tasks/{taskId}/subtasks/{subtaskId}/schedule  { date, from, to }
+        // KI-Log Nr. 62 | BACKEND: PUT /long-todos/{taskId}/subtasks/{subtaskId}/schedule
         await api.scheduleSubtask(state.scheduling.taskId, state.scheduling.subId, slot);
         ui.closeModal('scheduleModal');
         ui.toast('Teilaufgabe wurde eingeplant.');

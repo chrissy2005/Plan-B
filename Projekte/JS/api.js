@@ -1138,7 +1138,8 @@ async getMySubtasks(filters = {}) {
     /* ---------- Teilaufgaben ---------- */
 
     // KI-Log Nr. 44 | BACKEND: PUT /long-todos/{longToDoId}/subtasks/{subtaskId}/assignment
-    // Body { from, to, assigned } -> { message }
+    // Der Assignment-Endpunkt bleibt für das Freigeben erhalten, weil das
+    // aktuelle Backend dafür from/to voraussetzt.
     assignSubtask(taskId, subtaskId, data) {
       if (USE_MOCK) {
         if (data.assigned == null) return mock.releaseSubtask(taskId, subtaskId);
@@ -1149,6 +1150,28 @@ async getMySubtasks(filters = {}) {
         to: data.to,
         assigned: data.assigned == null ? null : Number(data.assigned)
       });
+    },
+
+    // KI-Log Nr. 62 | Freigeben nutzt den bestehenden Backend-Assignment-Vertrag.
+    releaseSubtask(taskId, subtaskId, data) {
+      return this.assignSubtask(taskId, subtaskId, {
+       from: data.from,
+       to: data.to,
+       assigned: null
+      });
+    },
+
+    // KI-Log Nr. 62 | BACKEND: PUT /long-todos/{longToDoId}/subtasks/{subtaskId}/claim
+    // Claim setzt ausschließlich die assigneeId; die Zeitplanung erfolgt separat.
+    claimSubtask(taskId, subtaskId) {
+      if (USE_MOCK) return mock.claimSubtask(taskId, subtaskId);
+      return request(
+       'PUT',
+       '/long-todos/' + encodeURIComponent(taskId)
+         + '/subtasks/' + encodeURIComponent(subtaskId)
+         + '/claim',
+       {}
+      );
     },
 
     // BACKEND: PATCH /tasks/{taskId}/subtasks/{subtaskId}  Body { done } -> 200 Task
@@ -1170,10 +1193,25 @@ async getMySubtasks(filters = {}) {
       }
     },
 
-    // KI-Log Nr. 39 | BACKEND: POST /tasks/{taskId}/subtasks/{subtaskId}/schedule  Body { date, from, to } -> 200 Teilaufgabe
+    // KI-Log Nr. 62 | BACKEND: PUT /long-todos/{longToDoId}/subtasks/{subtaskId}/schedule
+    // Das Projektformular liefert date/from/to; das Backend erwartet ISO-Zeitstempel.
     scheduleSubtask(taskId, subtaskId, slot) {
       if (USE_MOCK) return mock.scheduleSubtask(taskId, subtaskId, slot);
-      return Promise.reject(new ApiError(400, 'Untertasks können nicht eingeplant werden.'));
+      const start = new Date(slot.date + 'T' + slot.from + ':00');
+      const end = new Date(slot.date + 'T' + slot.to + ':00');
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        return Promise.reject(new ApiError(400, 'Bitte ein gültiges Zeitfenster auswählen.'));
+      }
+      return request(
+        'PUT',
+        '/long-todos/' + encodeURIComponent(taskId)
+          + '/subtasks/' + encodeURIComponent(subtaskId)
+          + '/schedule',
+        {
+          from: start.toISOString(),
+          to: end.toISOString()
+        }
+      );
     },
 
     // KI-Log Nr. 39 | BACKEND: GET /availability/free-slots?userId=...&until=... -> [{ date, from, to }]
