@@ -523,6 +523,8 @@ async getMySubtasks(filters = {}) {
             ''
         ),
         longToDoTitle: subtask.longToDoTitle || '',
+        earliestStart: subtask.earliestStart || null,
+        deadline: subtask.deadline || null,
         start: subtask.startDateTime || subtask.start || null,
         end: subtask.endDateTime || subtask.end || null,
         priority: subtask.priority || 'MEDIUM',

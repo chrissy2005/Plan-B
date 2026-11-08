@@ -112,6 +112,7 @@
     let externalCalendarEvents = [];
     let calendarLongTodos = isDemoMode ? demoLongTodos : [];
     let calendarSubtasks = isDemoMode ? demoUnscheduledSubtasks : [];
+    let unscheduledSubtasks = isDemoMode ? demoUnscheduledSubtasks : [];
 
     let selectedSubtask = null;
     let isLoadingCalendar = false;
@@ -311,6 +312,7 @@
         calendarEvents = [];
         calendarLongTodos = [];
         calendarSubtasks = [];
+        unscheduledSubtasks = [];
         renderWeek();
 
         message.textContent = "Kalenderdaten werden geladen …";
@@ -322,10 +324,10 @@
             "Teilaufgaben werden geladen …";
 
         try {
-            // KI-Log Nr. 69: /calendar liefert Meetings und lange To-Dos,
-            // /me/subtasks liefert alle eigenen Teilaufgaben inklusive der
-            // noch nicht eingeplanten Teilaufgaben.
-            const [weekData, ownSubtasks, ownLongTodos] = await Promise.all([
+            // KI-Log Nr. 69: /calendar bleibt die Quelle für die
+            // Kalenderwoche. Nur die rechte Box lädt unabhängig davon
+            // ungeplante Teilaufgaben über /me/subtasks.
+            const results = await Promise.allSettled([
                 window.PlanBApi.getCalendarWeek(requestedWeek),
                 window.PlanBApi.getMySubtasks(),
                 window.PlanBApi.getMyLongTodos()
@@ -336,17 +338,47 @@
                 return;
             }
 
-            const mappedWeek = mapCalendarWeek(
-                weekData,
-                ownSubtasks,
-                ownLongTodos
-            );
+            const [weekResult, subtasksResult, longTodosResult] = results;
+            if (weekResult.status === "rejected") {
+                throw weekResult.reason;
+            }
+
+            const weekData = weekResult.value;
+            const mappedWeek = mapCalendarWeek(weekData);
 
             calendarEvents = [...mappedWeek.events, ...externalCalendarEvents];
             calendarLongTodos = mappedWeek.longTodos;
-            calendarSubtasks = mappedWeek.subtasks;
+            calendarSubtasks = mappedWeek.subtasks.filter(task =>
+                task.start !== null && task.end !== null
+            );
+
+            let unscheduledLoadError = false;
+            if (subtasksResult.status === "fulfilled") {
+                const ownLongTodos = longTodosResult.status === "fulfilled"
+                    ? longTodosResult.value
+                    : [];
+                const longTodoById = new Map(ownLongTodos.map(todo => [
+                    String(todo.longToDoId ?? todo.id),
+                    todo
+                ]));
+
+                unscheduledSubtasks = subtasksResult.value
+                    .map(raw => mapCalendarSubtask(raw, longTodoById))
+                    .filter(task =>
+                        task.start === null
+                        && task.end === null
+                        && !task.done
+                    );
+            } else {
+                unscheduledSubtasks = [];
+                unscheduledLoadError = true;
+            }
 
             renderWeek();
+            if (unscheduledLoadError) {
+                document.getElementById("unscheduledSubtasks").textContent =
+                    "Teilaufgaben konnten nicht geladen werden.";
+            }
 
             message.textContent = "Kalenderdaten geladen.";
         } catch (error) {
@@ -359,6 +391,7 @@
             calendarEvents = externalCalendarEvents;
             calendarLongTodos = [];
             calendarSubtasks = [];
+            unscheduledSubtasks = [];
             renderWeek();
 
             // Einen Ladefehler nicht als leere Aufgabenliste darstellen.
@@ -861,7 +894,8 @@ function renderLongTodos(longTodos) {
         : "";
 
         const editableSubtask = item.type === "subtask"
-            ? calendarSubtasks.find(task => task.id === item.id)
+            ? [...calendarSubtasks, ...unscheduledSubtasks]
+                .find(task => task.id === item.id)
             : null;
 
         const actions = document.getElementById("calendarDetailsActions");
@@ -899,7 +933,7 @@ function renderLongTodos(longTodos) {
     const container = document.getElementById("unscheduledSubtasks");
     container.replaceChildren();
 
-    const tasks = calendarSubtasks.filter(task =>
+    const tasks = unscheduledSubtasks.filter(task =>
         task.start === null && matchesCalendarFilters(task)
     );
 
@@ -1016,12 +1050,8 @@ function renderLongTodos(longTodos) {
             // Die Woche des gewählten Zeitfensters prüfen.
             // Sie kann von der gerade angezeigten Woche abweichen.
             const week = localDateValue(getMonday(start));
-            const [data, ownSubtasks, ownLongTodos] = await Promise.all([
-                window.PlanBApi.getCalendarWeek(week),
-                window.PlanBApi.getMySubtasks(),
-                window.PlanBApi.getMyLongTodos()
-            ]);
-            const mapped = mapCalendarWeek(data, ownSubtasks, ownLongTodos);
+            const data = await window.PlanBApi.getCalendarWeek(week);
+            const mapped = mapCalendarWeek(data);
 
             events = [...mapped.events, ...mapped.subtasks];
         }

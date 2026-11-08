@@ -111,10 +111,12 @@ Ungeplante Teilaufgaben gehören nicht in dieses Array.
 
 ## 2. Eigene ungeplante Teilaufgaben laden
 
-Die Kalenderansicht lädt eigene Teilaufgaben über `GET /me/subtasks`.
-Das ist notwendig, weil `GET /calendar?week=...` nur zeitlich eingeplante
-Kalenderdaten liefern kann und ungeplante Teilaufgaben dort nicht enthalten
-sind.
+Die Wochenansicht lädt Meetings, lange To-Dos und eingeplante Teilaufgaben
+weiterhin über `GET /calendar?week=...`.
+Nur der separate Bereich „Meine Teilaufgaben einplanen“ lädt eigene
+Teilaufgaben unabhängig von der angezeigten Woche über `GET /me/subtasks`.
+Das ist notwendig, weil ungeplante Teilaufgaben keine Zeitangaben besitzen
+und deshalb nicht zuverlässig über die Kalenderwochenantwort gefunden werden.
 
 GET /me/subtasks
 
