@@ -12,6 +12,8 @@
     const scrollArea = document.getElementById("calendarScrollArea");
     const api = window.PlanBApi;
     const ui = window.PlanBUI;
+    // KI-Log Nr. 83: Der Kalender initialisiert den gemeinsamen Header direkt nach dem Laden der API.
+    void ui.initTopbar(api);
 
     const dayFormatter = new Intl.DateTimeFormat("de-DE", {
         weekday: "short",
@@ -1307,8 +1309,6 @@ function renderLongTodos(longTodos) {
     }
 
     renderTimeLabels();
-    // KI-Log Nr. 82: Die Kalenderseite verwendet dieselbe Header-Initialisierung wie Home und Projekte.
-    void ui.initTopbar(api);
     document.getElementById("reloadCalendar").addEventListener(
         "click",
         () => void loadCalendar()
