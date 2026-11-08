@@ -61,6 +61,21 @@ function formatHeaderName(user) {
     || 'Benutzer';
 }
 
+function getTokenUser() {
+  try {
+    const token = sessionStorage.getItem('token');
+    if (!token) return null;
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return {
+      name: payload.name || payload.preferred_username || payload.email,
+      email: payload.email || ''
+    };
+  } catch (error) {
+    console.warn('Benutzername konnte nicht aus der Sitzung gelesen werden:', error);
+    return null;
+  }
+}
+
 async function initSharedHeader() {
   const logoutButton = document.getElementById('logoutButton');
   if (logoutButton && !logoutButton.dataset.bound) {
@@ -68,12 +83,16 @@ async function initSharedHeader() {
     logoutButton.addEventListener('click', () => void logout());
   }
 
+  const name = document.getElementById('currentUserName');
+  const role = document.getElementById('currentUserRole');
+  const tokenUser = getTokenUser();
+  if (name && tokenUser) name.textContent = formatHeaderName(tokenUser);
+  if (role) role.textContent = formatHeaderRole(tokenUser);
+
   const api = window.PlanBApi;
   if (!api || typeof api.getCurrentUser !== 'function') return;
   try {
     const user = await api.getCurrentUser();
-    const name = document.getElementById('currentUserName');
-    const role = document.getElementById('currentUserRole');
     if (name) name.textContent = formatHeaderName(user);
     if (role) role.textContent = formatHeaderRole(user);
   } catch (error) {
