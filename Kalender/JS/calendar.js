@@ -1309,17 +1309,22 @@ function renderLongTodos(longTodos) {
         "click",
         () => void loadCalendar()
     );
+    // KI-Log Nr. 81: Der Backend-Proxy liefert externe Zeiträume als from/to.
     document.addEventListener("planb:google-busy-updated", event => {
         externalCalendarEvents = (event.detail || []).map((period, index) => ({
-            id: `google-busy-${index}-${period.start}`,
+            id: `google-busy-${index}-${period.from ?? period.start}`,
             type: "external",
             projectId: "",
             projectName: "",
             title: "belegt",
             context: "Externer Kalender",
-            start: new Date(period.start),
-            end: new Date(period.end)
-        }));
+            start: new Date(period.from ?? period.start),
+            end: new Date(period.to ?? period.end)
+        })).filter(period =>
+            Number.isFinite(period.start.getTime())
+            && Number.isFinite(period.end.getTime())
+            && period.start < period.end
+        );
         calendarEvents = calendarEvents.filter(item => item.type !== "external")
             .concat(externalCalendarEvents);
         renderWeek();
