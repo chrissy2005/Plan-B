@@ -6,31 +6,28 @@
     <title>Dashboard · Plan B</title>
     <link rel="icon" type="image/svg+xml" href="../../icons/plan-b.svg?v=31">
     <link rel="shortcut icon" href="../../icons/plan-b.svg?v=31">
-    <link rel="stylesheet" href="../../Projekte/CSS/projects.css?v=33">
-    <link rel="stylesheet" href="../CSS/menu.css?v=32">
-    <link rel="stylesheet" href="../CSS/home.css?v=32">
-    <script src="../../Projekte/JS/offline-db.js" defer></script>
-    <script src="../../Projekte/JS/api.js" defer></script>
-    <script src="../../Projekte/JS/ui.js" defer></script>
-    <script src="../JS/menu.js?v=33" defer></script> <!--KI-Log Nr. 21-->
+    <link rel="stylesheet" href="../../Projekte/CSS/projects.css?v=31">
+    <link rel="stylesheet" href="../CSS/menu.css?v=31">
+    <link rel="stylesheet" href="../CSS/home.css?v=31">
+    <script src="/Projekte/JS/offline-db.js" defer></script>
+    <script src="/Projekte/JS/api.js" defer></script>
+    <script src="/Projekte/JS/ui.js" defer></script>
+    <script src="../JS/menu.js" defer></script> <!--KI-Log Nr. 21-->
     <script src="../JS/home.js" defer></script>
 </head>
 <body>
 
     <header class="topbar">
-        <a class="logo" href="index.html?v=31" aria-label="Plan B Startseite">
+        <a class="logo" href="index.html" aria-label="Plan B Startseite">
             <img src="../../icons/plan-b.svg?v=31" alt="" aria-hidden="true">
         </a>
         <nav class="nav" aria-label="Hauptnavigation">
             <a href="index.html?v=31" aria-current="page">Home</a>
-            <a href="../../Projekte/HTML/projects.html">Projekte</a>
-            <a href="../../Kalender/HTML/calender.html">Kalender</a>
+            <a href="/Projekte/HTML/projects.html">Projekte</a>
+            <a href="/Kalender/HTML/calender.html">Kalender</a>
         </nav>
         <div class="user-area">
-            <span class="user-details">
-                <span class="user-name" id="currentUserName"></span>
-                <span class="user-role" id="currentUserRole"></span>
-            </span>
+            <span class="user-name" id="currentUserName"></span>
             <button class="btn" type="button" id="logoutButton">Abmelden</button>
         </div>
     </header>

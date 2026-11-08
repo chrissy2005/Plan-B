@@ -3,7 +3,7 @@
 const API_URL = "https://plan-b-api-6486e78ed17c.herokuapp.com";
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("../../service-worker.js?v=36")
+    navigator.serviceWorker.register("/service-worker.js?v=31")
       .catch(error => console.error("Service Worker konnte nicht aktualisiert werden:", error));
   });
 }
@@ -40,86 +40,4 @@ async function logout() {
   sessionStorage.removeItem("token");
   window.location.replace("../../Login/HTML/login.html?v=31");
 }
-
-function formatHeaderRole(user) {
-  const role = String(user && (user.role || user.function || user.position) || '').toUpperCase();
-  if (['PROJECT_LEADER', 'PROJECT_MANAGER', 'PROJEKTLEITER', 'PROJEKTLEITUNG'].includes(role)) {
-    return 'Projektleitung';
-  }
-  if (['MEMBER', 'TEAMMITGLIED'].includes(role)) {
-    return 'Teammitglied';
-  }
-  return 'Teammitglied';
-}
-
-function formatHeaderName(user) {
-  const firstName = String(user && (user.firstName || user.firstname) || '').trim();
-  const lastName = String(user && (user.lastName || user.lastname) || '').trim();
-  return user && (user.name || user.displayName)
-    || [firstName, lastName].filter(Boolean).join(' ')
-    || user && user.email
-    || 'Benutzer';
-}
-
-function getTokenUser() {
-  try {
-    const token = sessionStorage.getItem('token');
-    if (!token) return null;
-    const encodedPayload = token.split('.')[1];
-    if (!encodedPayload) return null;
-    const payload = JSON.parse(atob(encodedPayload.replace(/-/g, '+').replace(/_/g, '/')
-      .padEnd(Math.ceil(encodedPayload.length / 4) * 4, '=')));
-    return {
-      name: payload.name || payload.preferred_username || payload.email,
-      email: payload.email || ''
-    };
-  } catch (error) {
-    console.warn('Benutzername konnte nicht aus der Sitzung gelesen werden:', error);
-    return null;
-  }
-}
-
-async function loadHeaderUser() {
-  const token = sessionStorage.getItem('token');
-  if (!token) return null;
-  try {
-    const response = await fetch(API_URL + '/users/me', {
-      headers: {
-        Accept: 'application/json',
-        Authorization: 'Bearer ' + token
-      }
-    });
-    if (!response.ok) return null;
-    const raw = await response.json();
-    return raw.user || raw.data || raw;
-  } catch (error) {
-    console.warn('Benutzerdaten konnten nicht geladen werden:', error);
-    return null;
-  }
-}
-
-async function initSharedHeader() {
-  const logoutButton = document.getElementById('logoutButton');
-  if (logoutButton && !logoutButton.dataset.bound) {
-    logoutButton.dataset.bound = 'true';
-    logoutButton.addEventListener('click', () => void logout());
-  }
-
-  const name = document.getElementById('currentUserName');
-  const role = document.getElementById('currentUserRole');
-  const tokenUser = getTokenUser();
-  if (name) name.textContent = formatHeaderName(tokenUser || {});
-  if (role) role.textContent = formatHeaderRole(tokenUser || {});
-
-  try {
-    const user = await loadHeaderUser();
-    if (!user) return;
-    if (name) name.textContent = formatHeaderName(user);
-    if (role) role.textContent = formatHeaderRole(user);
-  } catch (error) {
-    console.warn('Kopfzeile konnte nicht geladen werden:', error);
-  }
-}
-
-window.addEventListener('DOMContentLoaded', initSharedHeader);
  

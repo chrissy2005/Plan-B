@@ -63,23 +63,9 @@
     margin-left: auto;
 }
 
-.topbar .user-details {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 1px;
-    min-width: 0;
-}
-
 .topbar .user-name {
     color: #6f5b63;
     font-size: 14px;
-    white-space: nowrap;
-}
-
-.topbar .user-role {
-    color: #6f5b63;
-    font-size: 12px;
     white-space: nowrap;
 }
 

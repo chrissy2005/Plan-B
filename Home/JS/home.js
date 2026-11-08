@@ -26,6 +26,7 @@
 
     async function init() {
         setDefaultDashboardFilters();
+        await ui.initTopbar(api);
         filterForm.addEventListener(
             'submit',
             event => {
