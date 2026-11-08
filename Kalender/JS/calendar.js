@@ -10,6 +10,8 @@
     const calendarDays = document.getElementById("calendarDays");
     const weekLabel = document.getElementById("weekLabel");
     const scrollArea = document.getElementById("calendarScrollArea");
+    const api = window.PlanBApi;
+    const ui = window.PlanBUI;
 
     const dayFormatter = new Intl.DateTimeFormat("de-DE", {
         weekday: "short",
@@ -1305,6 +1307,8 @@ function renderLongTodos(longTodos) {
     }
 
     renderTimeLabels();
+    // KI-Log Nr. 82: Die Kalenderseite verwendet dieselbe Header-Initialisierung wie Home und Projekte.
+    void ui.initTopbar(api);
     document.getElementById("reloadCalendar").addEventListener(
         "click",
         () => void loadCalendar()
